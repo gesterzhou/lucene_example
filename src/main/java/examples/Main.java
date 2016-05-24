@@ -75,7 +75,7 @@ public class Main {
     .setServerPort(port)
     .setPdxPersistent(false)
     .set("mcast-port", "0")
-//    .set("log-level", "debug")
+    .set("log-level", "debug")
     .build();
 
     serverLauncher.start();
