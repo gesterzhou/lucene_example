@@ -50,11 +50,11 @@ public class Main {
     
     // note: we have to create lucene index before the region
     prog.createIndexAndRegions(RegionShortcut.PARTITION);
-//    prog.feed(ENTRY_COUNT);
-//    prog.waitUntilFlushed("personIndex", "Person");
+    prog.feed(ENTRY_COUNT);
+    prog.waitUntilFlushed("personIndex", "Person");
     
     // now let's do search on lucene index
-//    prog.doSearch("personIndex", "Person", "name:Tom9*");
+    prog.doSearch("personIndex", "Person", "name:Tom9*");
 //      prog.doSearch("customerIndex", "Customer", "name:Tom*");
 //      prog.doSearch("pageIndex", "Page", "id:10");
     
@@ -75,7 +75,7 @@ public class Main {
     .setServerPort(port)
     .setPdxPersistent(false)
     .set("mcast-port", "0")
-    .set("log-level", "debug")
+//    .set("log-level", "debug")
     .build();
 
     serverLauncher.start();
@@ -100,7 +100,7 @@ public class Main {
     fields.put("address", new MyCharacterAnalyzer());
     service.createIndex("analyzerIndex", "Person", fields);
 
-//    service.createIndex("personIndex", "Person", "name", "email", "address");
+    service.createIndex("personIndex", "Person", "name", "email", "address");
     PersonRegion = cache.createRegionFactory(shortcut).create("Person");
     
     service.createIndex("customerIndex", "Customer", "symbol", /*"revenue",*/ "name", "email", "address");
