@@ -29,6 +29,8 @@ import com.gemstone.gemfire.cache.lucene.LuceneServiceProvider;
 import com.gemstone.gemfire.cache.lucene.internal.LuceneServiceImpl;
 import com.gemstone.gemfire.distributed.ServerLauncher;
 import com.gemstone.gemfire.internal.logging.LogService;
+import com.gemstone.gemfire.pdx.JSONFormatter;
+import com.gemstone.gemfire.pdx.PdxInstance;
 
 public class Main {
   // private final Version version = Version.LUCENE_5_3_0;
@@ -140,6 +142,39 @@ public class Main {
 //    for (int i=0; i<count; i++) {
 //      PageRegion.put("key"+i, new Page(i));
 //    }
+    
+    insertAJson(PersonRegion);
+  }
+  
+  private void insertAJson(Region region) {
+    String jsonCustomer = "{"
+        + "\"name\": \"Tom9_JSON\","
+        + "\"lastName\": \"Smith\","
+        + " \"age\": 25,"
+        + "\"address\":"
+        + "{"
+        + "\"streetAddress\": \"21 2nd Street\","
+        + "\"city\": \"New York\","
+        + "\"state\": \"NY\","
+        + "\"postalCode\": \"10021\""
+        + "},"
+        + "\"phoneNumber\":"
+        + "["
+        + "{"
+        + " \"type\": \"home\","
+        + "\"number\": \"212 555-1234\""
+        + "},"
+        + "{"
+        + " \"type\": \"fax\","
+        + "\"number\": \"646 555-4567\""
+        + "}"
+        + "]"
+        + "}";
+
+    region.put("jsondoc1", JSONFormatter.fromJSON(jsonCustomer));
+    System.out.println("JSON documents added into Cache: " + jsonCustomer);
+    System.out.println(region.get("jsondoc1"));
+    System.out.println();
   }
 
   private void doSearch(String indexName, String regionName, String queryString) {
@@ -155,10 +190,17 @@ public class Main {
       if (page.size()>0) {
         System.out.println("Search found "+page.size()+" rows in "+regionName);
       }
-      //    for (LuceneResultStruct row : page) {
-      //      System.out.println("No: "+cnt+":key="+row.getKey()+",value="+row.getValue()+",score="+row.getValue());
-      //      cnt++;
-      //    }
+      
+      for (LuceneResultStruct row : page) {
+    	  Object value = row.getValue();
+    	  System.out.println("No: "+cnt+":key="+row.getKey()+",value="+value+",score="+row.getScore());
+          if (value instanceof PdxInstance) {
+            PdxInstance pdx = (PdxInstance)value;
+            String jsonString = JSONFormatter.toJSON(pdx);
+            System.out.println("Found a json object:"+jsonString);
+          }
+    	  cnt++;
+      }
     }
   }
 
@@ -176,7 +218,7 @@ public class Main {
     region.put("A", new Person(value1, value1, ""));
     region.put("B", new Person(value2, value2, ""));
     region.put("C", new Person(value3, value3, ""));
-    
+    waitUntilFlushed(indexName, regionName);
     
     // standard analyzer with double quote
     // this query string will be parsed as "one three"
