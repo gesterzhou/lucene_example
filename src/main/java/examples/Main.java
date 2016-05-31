@@ -45,6 +45,10 @@ public class Main {
   final static Logger logger = LogService.getLogger();
 
   public static void main(final String[] args) {
+    System.out.println("There are "+args.length+" arguments.");
+    for (int i=0; i<args.length; i++) {
+      System.out.println("arg"+i+":"+args[i]);
+    }
 
     Main prog = new Main();
     try {
