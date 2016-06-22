@@ -23,6 +23,7 @@ import com.gemstone.gemfire.cache.RegionFactory;
 import com.gemstone.gemfire.cache.RegionShortcut;
 import com.gemstone.gemfire.cache.lucene.LuceneIndex;
 import com.gemstone.gemfire.cache.lucene.LuceneQuery;
+import com.gemstone.gemfire.cache.lucene.LuceneQueryException;
 import com.gemstone.gemfire.cache.lucene.LuceneQueryResults;
 import com.gemstone.gemfire.cache.lucene.LuceneResultStruct;
 import com.gemstone.gemfire.cache.lucene.LuceneServiceProvider;
@@ -44,7 +45,7 @@ public class Main {
   final static int ENTRY_COUNT = 100;
   final static Logger logger = LogService.getLogger();
 
-  public static void main(final String[] args) {
+  public static void main(final String[] args) throws LuceneQueryException {
     System.out.println("There are "+args.length+" arguments.");
     for (int i=0; i<args.length; i++) {
       System.out.println("arg"+i+":"+args[i]);
@@ -181,7 +182,7 @@ public class Main {
     System.out.println();
   }
 
-  private void doSearch(String indexName, String regionName, String queryString) {
+  private void doSearch(String indexName, String regionName, String queryString) throws LuceneQueryException {
     LuceneQuery query = getLuceneQuery(indexName, regionName, queryString);
     if (query == null) {
       return;
@@ -208,7 +209,7 @@ public class Main {
     }
   }
 
-  private void feedAndDoSpecialSearch(String indexName, String regionName) {
+  private void feedAndDoSpecialSearch(String indexName, String regionName) throws LuceneQueryException {
     String value1 = "one three";
     String value2 = "one two three";
     String value3 = "one@three";
@@ -292,17 +293,11 @@ public class Main {
   }
 
   private LuceneQuery getLuceneQuery(String indexName, String regionName, String queryString) {
-    try {
-      LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, queryString);
-      return query;
-    }
-    catch (ParseException e) {
-      e.printStackTrace();
-    }
-    return null;
+    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, queryString, "name");
+    return query;
   }
   
-  private void verifyQuery(String indexName, String regionName, String queryString, String... expectedKeys) {
+  private void verifyQuery(String indexName, String regionName, String queryString, String... expectedKeys) throws LuceneQueryException {
     LuceneQuery query = getLuceneQuery(indexName, regionName, queryString);
     if (query == null) {
       return;
