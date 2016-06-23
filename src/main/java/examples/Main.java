@@ -59,10 +59,12 @@ public class Main {
     prog.createIndexAndRegions(RegionShortcut.PARTITION);
     prog.feed(ENTRY_COUNT);
     prog.waitUntilFlushed("personIndex", "Person");
+    prog.waitUntilFlushed("customerIndex", "Customer");
     
     // now let's do search on lucene index
     prog.doSearch("personIndex", "Person", "name:Tom9*");
-//      prog.doSearch("customerIndex", "Customer", "name:Tom*");
+    prog.doSearch("customerIndex", "Customer", "name:Tom123");
+    prog.doSearch("customerIndex", "Customer", "symbol:456");
 //      prog.doSearch("pageIndex", "Page", "id:10");
     
     prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
@@ -149,6 +151,14 @@ public class Main {
 //    }
     
     insertAJson(PersonRegion);
+    insertNestObjects(CustomerRegion);
+  }
+  
+  private void insertNestObjects(Region region) {
+    Customer customer123 = new Customer(123);
+    Customer customer456 = new Customer(456);
+    region.put("customer123", customer123);
+    region.put("customer456", customer456);
   }
   
   private void insertAJson(Region region) {
@@ -206,6 +216,8 @@ public class Main {
           }
     	  cnt++;
       }
+    } else {
+      System.out.println("Search did not find any match in "+regionName);
     }
   }
 
