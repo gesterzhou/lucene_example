@@ -65,6 +65,7 @@ public class Main {
     prog.doSearch("personIndex", "Person", "name:Tom9*");
     prog.doSearch("customerIndex", "Customer", "name:Tom123");
     prog.doSearch("customerIndex", "Customer", "symbol:456");
+    prog.doSearch("customerIndex", "Customer", "SSN:123");
 //      prog.doSearch("pageIndex", "Page", "id:10");
     
     prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
@@ -112,7 +113,7 @@ public class Main {
     service.createIndex("personIndex", "Person", "name", "email", "address");
     PersonRegion = cache.createRegionFactory(shortcut).create("Person");
     
-    service.createIndex("customerIndex", "Customer", "symbol", /*"revenue",*/ "name", "email", "address");
+    service.createIndex("customerIndex", "Customer", "symbol", "revenue", "SSN", "name", "email", "address");
     CustomerRegion = cache.createRegionFactory(shortcut).create("Customer");
     
     service.createIndex("pageIndex", "Page", "symbol", /*"revenue",*/ "name", "email", "address");
@@ -193,6 +194,7 @@ public class Main {
   }
 
   private void doSearch(String indexName, String regionName, String queryString) throws LuceneQueryException {
+    System.out.println("\nQuery string is: "+queryString);
     LuceneQuery query = getLuceneQuery(indexName, regionName, queryString);
     if (query == null) {
       return;
