@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
@@ -18,15 +19,20 @@ import org.apache.lucene.queryparser.classic.ParseException;
 
 import com.gemstone.gemfire.cache.Cache;
 import com.gemstone.gemfire.cache.CacheFactory;
+import com.gemstone.gemfire.cache.DataPolicy;
 import com.gemstone.gemfire.cache.Region;
 import com.gemstone.gemfire.cache.RegionFactory;
 import com.gemstone.gemfire.cache.RegionShortcut;
 import com.gemstone.gemfire.cache.lucene.LuceneIndex;
 import com.gemstone.gemfire.cache.lucene.LuceneQuery;
 import com.gemstone.gemfire.cache.lucene.LuceneQueryException;
-import com.gemstone.gemfire.cache.lucene.LuceneQueryResults;
 import com.gemstone.gemfire.cache.lucene.LuceneResultStruct;
 import com.gemstone.gemfire.cache.lucene.LuceneServiceProvider;
+import com.gemstone.gemfire.cache.lucene.PageableLuceneQueryResults;
+//import com.gemstone.gemfire.cache.lucene.internal.FSRepositoryManagerFactory;
+import com.gemstone.gemfire.cache.lucene.internal.LuceneIndexForPartitionedRegion;
+import com.gemstone.gemfire.cache.lucene.internal.LuceneIndexImpl;
+import com.gemstone.gemfire.cache.lucene.internal.LuceneRawIndexFactory;
 import com.gemstone.gemfire.cache.lucene.internal.LuceneServiceImpl;
 import com.gemstone.gemfire.distributed.ServerLauncher;
 import com.gemstone.gemfire.internal.logging.LogService;
@@ -42,7 +48,7 @@ public class Main {
   Region PageRegion;
   LuceneServiceImpl service;
   
-  final static int ENTRY_COUNT = 100;
+  final static int ENTRY_COUNT = 1000;
   final static Logger logger = LogService.getLogger();
 
   public static void main(final String[] args) throws LuceneQueryException {
@@ -53,10 +59,11 @@ public class Main {
 
     Main prog = new Main();
     try {
+//    System.setProperty("gemfire.NotUsing.RegionDirectory", "true");
     prog.createCache(40405);
     
     // note: we have to create lucene index before the region
-    prog.createIndexAndRegions(RegionShortcut.PARTITION);
+    prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);
     prog.feed(ENTRY_COUNT);
     prog.waitUntilFlushed("personIndex", "Person");
     prog.waitUntilFlushed("customerIndex", "Customer");
@@ -66,6 +73,8 @@ public class Main {
     prog.doSearch("customerIndex", "Customer", "name:Tom123");
     prog.doSearch("customerIndex", "Customer", "symbol:456");
     prog.doSearch("customerIndex", "Customer", "SSN:123");
+    prog.doSearch("personIndex", "Person", "name:Tom999*");
+//      prog.doSearch("customerIndex", "Customer", "name:Tom*");
 //      prog.doSearch("pageIndex", "Page", "id:10");
     
     prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
@@ -83,9 +92,13 @@ public class Main {
     serverLauncher  = new ServerLauncher.Builder()
     .setMemberName("server1")
     .setServerPort(port)
-    .setPdxPersistent(false)
+    .setPdxPersistent(true)
     .set("mcast-port", "0")
-    .set("log-level", "debug")
+    .set("enable-time-statistics","true")
+    .set("statistic-sample-rate","1000")
+    .set("statistic-sampling-enabled", "true")
+    .set("statistic-archive-file", "server1.gfs")
+//    .set("log-level", "debug")
     .build();
 
     serverLauncher.start();
@@ -110,8 +123,15 @@ public class Main {
     fields.put("address", new MyCharacterAnalyzer());
     service.createIndex("analyzerIndex", "Person", fields);
 
+    LuceneServiceImpl.luceneIndexFactory = new LuceneRawIndexFactory();
+//    LuceneIndexForPartitionedRegion.partitionedRepositoryManagerFactory = new FSRepositoryManagerFactory();
     service.createIndex("personIndex", "Person", "name", "email", "address");
-    PersonRegion = cache.createRegionFactory(shortcut).create("Person");
+    // PersonRegion = cache.createRegionFactory(shortcut).create("Person");
+    cache.createDiskStoreFactory().create("data");
+    PersonRegion = cache.createRegionFactory()
+        .setDiskStoreName("data")
+        //.setDataPolicy(DataPolicy.PARTITION).create("Person");
+    .setDataPolicy(DataPolicy.PERSISTENT_PARTITION).create("Person");
     
     service.createIndex("customerIndex", "Customer", "symbol", "revenue", "SSN", "name", "email", "address");
     CustomerRegion = cache.createRegionFactory(shortcut).create("Customer");
@@ -122,8 +142,15 @@ public class Main {
   
   // for test purpose
   private void waitUntilFlushed(String indexName, String regionName) {
-	LuceneIndex index = service.getIndex(indexName, regionName);
-	index.waitUntilFlushed(30000);
+	LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex(indexName, regionName);
+	boolean status = false;
+	long then = System.currentTimeMillis();
+	do {
+	  status = index.waitUntilFlushed(60000);
+	} while (status == false);
+	System.out.println("Total wait time is:"+(System.currentTimeMillis() - then));
+	
+	index.dumpFiles("dump");
 //    String aeqId = LuceneServiceImpl.getUniqueIndexName(indexName, regionName);
 //    AsyncEventQueueImpl queue = (AsyncEventQueueImpl)cache.getAsyncEventQueue(aeqId);
 //    GatewaySender sender = queue.getSender();
@@ -194,32 +221,30 @@ public class Main {
   }
 
   private void doSearch(String indexName, String regionName, String queryString) throws LuceneQueryException {
-    System.out.println("\nQuery string is: "+queryString);
     LuceneQuery query = getLuceneQuery(indexName, regionName, queryString);
     if (query == null) {
       return;
     }
     
-    LuceneQueryResults results = query.search();
-    if (results.hasNextPage()) {
-      List<LuceneResultStruct> page = results.getNextPage();
-      int cnt = 0;
-      if (page.size()>0) {
-        System.out.println("Search found "+page.size()+" rows in "+regionName);
-      }
-      
-      for (LuceneResultStruct row : page) {
-    	  Object value = row.getValue();
-    	  System.out.println("No: "+cnt+":key="+row.getKey()+",value="+value+",score="+row.getScore());
+    PageableLuceneQueryResults<String, Object> results = query.findPages();
+    if (results.size() >0 ) {
+      System.out.println("Search found "+results.size()+" rows in "+regionName);
+    }
+    
+    final AtomicInteger cnt = new AtomicInteger(0);
+    while(results.hasNext()) {
+      results.next().stream()
+        .forEach(struct -> {
+          Object value = struct.getValue();
           if (value instanceof PdxInstance) {
             PdxInstance pdx = (PdxInstance)value;
             String jsonString = JSONFormatter.toJSON(pdx);
             System.out.println("Found a json object:"+jsonString);
+          } else {
+            System.out.println("No: "+cnt.get()+":key="+struct.getKey()+",value="+value+",score="+struct.getScore());
           }
-    	  cnt++;
-      }
-    } else {
-      System.out.println("Search did not find any match in "+regionName);
+        });
+      cnt.incrementAndGet();
     }
   }
 
@@ -319,15 +344,16 @@ public class Main {
     
     Set expectedKeySet = new HashSet<>(Arrays.asList(expectedKeys));
     Set actualKeySet = new HashSet<>();
-    final LuceneQueryResults results = query.search();
-    while(results.hasNextPage()) {
-      results.getNextPage().stream()
+    final PageableLuceneQueryResults<String, Object> results = query.findPages();
+    while(results.hasNext()) {
+      results.next().stream()
       .forEach(struct -> { 
         String key = (String)((LuceneResultStruct)struct).getKey(); 
-        //          System.out.println("key="+key); 
+//                  System.out.println("key="+key); 
         actualKeySet.add(key); 
       });
     }
+
     if (expectedKeySet.containsAll(actualKeySet) && actualKeySet.containsAll(expectedKeySet)) {
       System.out.println(queryString + " expects "+expectedKeySet+ " -- OK");
     } else {

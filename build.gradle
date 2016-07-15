@@ -32,14 +32,13 @@ repositories {
 
 // In this section you declare the dependencies for your production and test code
 dependencies {
-    // compile "org.apache.geode:geode-common:1.0.0-incubating.M2"
-    // compile "org.apache.geode:geode-core:1.0.0-incubating.M2"
-    // compile "org.apache.geode:geode-lucene:1.0.0-incubating.M2"
+    compile "org.apache.geode:geode-common:1.0.0-incubating-SNAPSHOT"
+    compile "org.apache.geode:geode-core:1.0.0-incubating-SNAPSHOT"
+    compile "org.apache.geode:geode-lucene:1.0.0-incubating-SNAPSHOT"
 
-
-    compile "org.apache.geode:geode-common:1.0.0-incubating.M3-SNAPSHOT"
-    compile "org.apache.geode:geode-core:1.0.0-incubating.M3-SNAPSHOT"
-    compile "org.apache.geode:geode-lucene:1.0.0-incubating.M3-SNAPSHOT"
+    // compile "org.apache.geode:geode-common:1.0.0-incubating.M3-SNAPSHOT"
+    // compile "org.apache.geode:geode-core:1.0.0-incubating.M3-SNAPSHOT"
+    // compile "org.apache.geode:geode-lucene:1.0.0-incubating.M3-SNAPSHOT"
 
     // compile files("../../git6/gemfire/open/geode-assembly/build/install/apache-geode/lib/geode-common-9.0.0-SNAPSHOT.jar")
     // compile files("../../git6/gemfire/open/geode-assembly/build/install/apache-geode/lib/geode-core-9.0.0-SNAPSHOT.jar")
