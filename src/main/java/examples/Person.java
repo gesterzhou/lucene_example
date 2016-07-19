@@ -5,6 +5,7 @@ import java.io.Serializable;
 public class Person implements Serializable {
   private String name;
   private String email;
+  private int revenue;
   private String address;
 
   public Person() {}
@@ -19,6 +20,7 @@ public class Person implements Serializable {
     this.name = title+"Tom"+idx+" Zhou";
     this.email = "tzhou"+idx+"@example.com";
     this.address = ""+idx+" Lindon St, Portland_OR_"+(97000+idx);
+    this.revenue = idx*1000;
   }
 
   public String getName() {
@@ -39,6 +41,7 @@ public class Person implements Serializable {
     sb.append("name='").append(name).append('\'');
     sb.append(", email='").append(email).append('\'');
     sb.append(", address='").append(address).append('\'');
+    sb.append(", revenue='").append(revenue).append('\'');
     sb.append('}');
     return sb.toString();
   }

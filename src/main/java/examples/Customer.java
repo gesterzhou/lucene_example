@@ -4,13 +4,13 @@ import java.io.Serializable;
 
 public class Customer implements Serializable {
   private String symbol; // search integer in string format
-  private double revenue; // search float
+  private int revenue;
   private int SSN; // search int
   private Person contact; // search nested object 
 
   public Customer() {}
 
-  public Customer(String symbol, float revenue, int ssn, Person contact) {
+  public Customer(String symbol, int revenue, int ssn, Person contact) {
     this.symbol = symbol;
     this.revenue = revenue;
     this.SSN = ssn;
@@ -19,7 +19,7 @@ public class Customer implements Serializable {
 
   public Customer(int idx) {
     this.symbol = ""+idx;
-    this.revenue = (double)(1000.0 * idx);
+    this.revenue = 1000 * idx;
     this.SSN = idx;
     this.contact = new Person(idx, "Customer");
   }

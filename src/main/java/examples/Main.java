@@ -27,6 +27,7 @@ import com.gemstone.gemfire.cache.lucene.LuceneIndex;
 import com.gemstone.gemfire.cache.lucene.LuceneQuery;
 import com.gemstone.gemfire.cache.lucene.LuceneQueryException;
 import com.gemstone.gemfire.cache.lucene.LuceneResultStruct;
+import com.gemstone.gemfire.cache.lucene.LuceneService;
 import com.gemstone.gemfire.cache.lucene.LuceneServiceProvider;
 import com.gemstone.gemfire.cache.lucene.PageableLuceneQueryResults;
 //import com.gemstone.gemfire.cache.lucene.internal.FSRepositoryManagerFactory;
@@ -69,16 +70,23 @@ public class Main {
     prog.waitUntilFlushed("customerIndex", "Customer");
     
     // now let's do search on lucene index
-    prog.doSearch("personIndex", "Person", "name:Tom9*");
-    prog.doSearch("customerIndex", "Customer", "name:Tom123");
-    prog.doSearch("customerIndex", "Customer", "symbol:456");
-    prog.doSearch("customerIndex", "Customer", "SSN:123");
-    prog.doSearch("personIndex", "Person", "name:Tom999*");
-//      prog.doSearch("customerIndex", "Customer", "name:Tom*");
-//      prog.doSearch("pageIndex", "Page", "id:10");
+    prog.queryByStringQueryParser("personIndex", "Person", "name:Tom9*");
+    prog.queryByStringQueryParser("personIndex", "Person", "streetAddress:21*");
+    prog.queryByStringQueryParser("customerIndex", "Customer", "name:Tom123");
+
+    prog.queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
+    prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO *]");
+    prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO 223]");
+    prog.queryByInRange("customerIndex", "Customer", "SSN", 456, Integer.MAX_VALUE);
     
+    prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD, 123, 123);
+    prog.queryByInRange("personIndex", "Person", "revenue", 3000, 5000);
+    
+//  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123000.0 TO 123000.0]");
+//  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":1230*");
+//    prog.doSearch("pageIndex", "Page", "id:10");
+  
     prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
-    
     } finally {
       prog.stopServer();
     }
@@ -125,7 +133,7 @@ public class Main {
 
     LuceneServiceImpl.luceneIndexFactory = new LuceneRawIndexFactory();
 //    LuceneIndexForPartitionedRegion.partitionedRepositoryManagerFactory = new FSRepositoryManagerFactory();
-    service.createIndex("personIndex", "Person", "name", "email", "address");
+    service.createIndex("personIndex", "Person", "name", "email", "address", "streetAddress", "revenue");
     // PersonRegion = cache.createRegionFactory(shortcut).create("Person");
     cache.createDiskStoreFactory().create("data");
     PersonRegion = cache.createRegionFactory()
@@ -133,7 +141,7 @@ public class Main {
         //.setDataPolicy(DataPolicy.PARTITION).create("Person");
     .setDataPolicy(DataPolicy.PERSISTENT_PARTITION).create("Person");
     
-    service.createIndex("customerIndex", "Customer", "symbol", "revenue", "SSN", "name", "email", "address");
+    service.createIndex("customerIndex", "Customer", "symbol", "revenue", "SSN", "name", "email", "address", LuceneService.REGION_VALUE_FIELD);
     CustomerRegion = cache.createRegionFactory(shortcut).create("Customer");
     
     service.createIndex("pageIndex", "Page", "symbol", /*"revenue",*/ "name", "email", "address");
@@ -180,8 +188,17 @@ public class Main {
     
     insertAJson(PersonRegion);
     insertNestObjects(CustomerRegion);
+    insertPrimitiveTypeValue(CustomerRegion);
   }
   
+  private void insertPrimitiveTypeValue(Region region) {
+    region.put("primitiveInt1", 123);
+    region.put("primitiveInt2", 223);
+    //    region.put("primitiveDouble1", 123000.0);
+    //    region.put("primitiveString1", "123");
+    //    region.put("primitiveString2", "22");
+  }
+
   private void insertNestObjects(Region region) {
     Customer customer123 = new Customer(123);
     Customer customer456 = new Customer(456);
@@ -194,6 +211,7 @@ public class Main {
         + "\"name\": \"Tom9_JSON\","
         + "\"lastName\": \"Smith\","
         + " \"age\": 25,"
+        + " \"revenue\": 4000,"
         + "\"address\":"
         + "{"
         + "\"streetAddress\": \"21 2nd Street\","
@@ -218,10 +236,38 @@ public class Main {
     System.out.println("JSON documents added into Cache: " + jsonCustomer);
     System.out.println(region.get("jsondoc1"));
     System.out.println();
+    
+    String jsonCustomer2 = "{"
+        + "\"name\": \"Tom99_JSON\","
+        + "\"lastName\": \"Smith\","
+        + " \"age\": 25,"
+        + " \"revenue\": 4001,"
+        + "\"address\":"
+        + "{"
+        + "\"streetAddress\": \"21 2nd Street\","
+        + "\"city\": \"New York\","
+        + "\"state\": \"NY\","
+        + "\"postalCode\": \"10021\""
+        + "},"
+        + "\"phoneNumber\":"
+        + "["
+        + "{"
+        + " \"type\": \"home\","
+        + "\"number\": \"212 555-1234\""
+        + "},"
+        + "{"
+        + " \"type\": \"fax\","
+        + "\"number\": \"646 555-4567\""
+        + "}"
+        + "]"
+        + "}";
+    region.put("jsondoc2", JSONFormatter.fromJSON(jsonCustomer2));
+    System.out.println("JSON documents added into Cache: " + jsonCustomer2);
+    System.out.println(region.get("jsondoc2"));
+    System.out.println();
   }
 
-  private void doSearch(String indexName, String regionName, String queryString) throws LuceneQueryException {
-    LuceneQuery query = getLuceneQuery(indexName, regionName, queryString);
+  private void getResults(LuceneQuery query, String regionName) throws LuceneQueryException {
     if (query == null) {
       return;
     }
@@ -331,13 +377,23 @@ public class Main {
     verifyQuery(indexName, regionName, "name:three AND address:four", "A");
   }
 
-  private LuceneQuery getLuceneQuery(String indexName, String regionName, String queryString) {
+  private void queryByStringQueryParser(String indexName, String regionName, String queryString) throws LuceneQueryException {
+    System.out.println("Query string is:"+queryString);
     LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, queryString, "name");
-    return query;
+
+    getResults(query, regionName);
+  }
+  
+  private void queryByInRange(String indexName, String regionName, String fieldName, int lowerValue, int upperValue) throws LuceneQueryException {
+    System.out.println("Query range is:"+fieldName+":["+lowerValue+" TO "+upperValue+"]");
+    IntRangeQueryProvider provider = new IntRangeQueryProvider(fieldName, lowerValue, upperValue);
+    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
+    
+    getResults(query, regionName);
   }
   
   private void verifyQuery(String indexName, String regionName, String queryString, String... expectedKeys) throws LuceneQueryException {
-    LuceneQuery query = getLuceneQuery(indexName, regionName, queryString);
+    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, queryString, "name");
     if (query == null) {
       return;
     }
