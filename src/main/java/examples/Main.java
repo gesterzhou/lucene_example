@@ -33,8 +33,9 @@ import com.gemstone.gemfire.cache.lucene.PageableLuceneQueryResults;
 //import com.gemstone.gemfire.cache.lucene.internal.FSRepositoryManagerFactory;
 import com.gemstone.gemfire.cache.lucene.internal.LuceneIndexForPartitionedRegion;
 import com.gemstone.gemfire.cache.lucene.internal.LuceneIndexImpl;
-import com.gemstone.gemfire.cache.lucene.internal.LuceneRawIndexFactory;
+//import com.gemstone.gemfire.cache.lucene.internal.LuceneRawIndexFactory;
 import com.gemstone.gemfire.cache.lucene.internal.LuceneServiceImpl;
+import com.gemstone.gemfire.cache.lucene.internal.RawLuceneRepositoryManagerFactory;
 import com.gemstone.gemfire.distributed.ServerLauncher;
 import com.gemstone.gemfire.internal.logging.LogService;
 import com.gemstone.gemfire.pdx.JSONFormatter;
@@ -87,6 +88,10 @@ public class Main {
 //    prog.doSearch("pageIndex", "Page", "id:10");
   
     prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
+    
+    prog.doDump("personIndex", "Person");
+    prog.doDump("customerIndex", "Customer");
+    prog.doDump("analyzerIndex", "Person");
     } finally {
       prog.stopServer();
     }
@@ -131,8 +136,8 @@ public class Main {
     fields.put("address", new MyCharacterAnalyzer());
     service.createIndex("analyzerIndex", "Person", fields);
 
-    LuceneServiceImpl.luceneIndexFactory = new LuceneRawIndexFactory();
-//    LuceneIndexForPartitionedRegion.partitionedRepositoryManagerFactory = new FSRepositoryManagerFactory();
+    // LuceneServiceImpl.luceneIndexFactory = new LuceneRawIndexFactory();
+//    LuceneIndexForPartitionedRegion.partitionedRepositoryManagerFactory = new RawLuceneRepositoryManagerFactory();
     service.createIndex("personIndex", "Person", "name", "email", "address", "streetAddress", "revenue");
     // PersonRegion = cache.createRegionFactory(shortcut).create("Person");
     cache.createDiskStoreFactory().create("data");
@@ -150,20 +155,18 @@ public class Main {
   
   // for test purpose
   private void waitUntilFlushed(String indexName, String regionName) {
-	LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex(indexName, regionName);
-	boolean status = false;
-	long then = System.currentTimeMillis();
-	do {
-	  status = index.waitUntilFlushed(60000);
-	} while (status == false);
-	System.out.println("Total wait time is:"+(System.currentTimeMillis() - then));
-	
-	index.dumpFiles("dump");
-//    String aeqId = LuceneServiceImpl.getUniqueIndexName(indexName, regionName);
-//    AsyncEventQueueImpl queue = (AsyncEventQueueImpl)cache.getAsyncEventQueue(aeqId);
-//    GatewaySender sender = queue.getSender();
-//    sender.resume();
-//    Awaitility.waitAtMost(30, TimeUnit.SECONDS).until(() -> { return (0==queue.size()); });
+    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex(indexName, regionName);
+    boolean status = false;
+    long then = System.currentTimeMillis();
+    do {
+      status = index.waitUntilFlushed(60000);
+    } while (status == false);
+    System.out.println("Total wait time is:"+(System.currentTimeMillis() - then));
+  }
+  
+  public void doDump(String indexName, String regionName) {
+    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex(indexName, regionName);
+    index.dumpFiles("dump"+indexName);
   }
   
   private void defineIndexAndRegion(String indexName, String regionName, RegionShortcut regionType, String...fields) {
