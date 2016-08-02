@@ -1,5 +1,6 @@
 package examples;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -30,12 +31,9 @@ import com.gemstone.gemfire.cache.lucene.LuceneResultStruct;
 import com.gemstone.gemfire.cache.lucene.LuceneService;
 import com.gemstone.gemfire.cache.lucene.LuceneServiceProvider;
 import com.gemstone.gemfire.cache.lucene.PageableLuceneQueryResults;
-//import com.gemstone.gemfire.cache.lucene.internal.FSRepositoryManagerFactory;
 import com.gemstone.gemfire.cache.lucene.internal.LuceneIndexForPartitionedRegion;
 import com.gemstone.gemfire.cache.lucene.internal.LuceneIndexImpl;
-//import com.gemstone.gemfire.cache.lucene.internal.LuceneRawIndexFactory;
 import com.gemstone.gemfire.cache.lucene.internal.LuceneServiceImpl;
-import com.gemstone.gemfire.cache.lucene.internal.RawLuceneRepositoryManagerFactory;
 import com.gemstone.gemfire.distributed.ServerLauncher;
 import com.gemstone.gemfire.internal.logging.LogService;
 import com.gemstone.gemfire.pdx.JSONFormatter;
@@ -53,7 +51,7 @@ public class Main {
   final static int ENTRY_COUNT = 1000;
   final static Logger logger = LogService.getLogger();
 
-  public static void main(final String[] args) throws LuceneQueryException {
+  public static void main(final String[] args) throws LuceneQueryException, IOException, InterruptedException {
     System.out.println("There are "+args.length+" arguments.");
     for (int i=0; i<args.length; i++) {
       System.out.println("arg"+i+":"+args[i]);
@@ -92,6 +90,12 @@ public class Main {
     prog.doDump("personIndex", "Person");
     prog.doDump("customerIndex", "Customer");
     prog.doDump("analyzerIndex", "Person");
+    
+    System.out.println("Press Space to exit");
+    int c;
+    while ((c = System.in.read())==-1) Thread.sleep(10);
+    System.out.println("GGG:"+c);
+
     } finally {
       prog.stopServer();
     }
@@ -106,6 +110,7 @@ public class Main {
     .setMemberName("server1")
     .setServerPort(port)
     .setPdxPersistent(true)
+    .set("locators", "localhost[12345]")
     .set("mcast-port", "0")
     .set("enable-time-statistics","true")
     .set("statistic-sample-rate","1000")

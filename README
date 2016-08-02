@@ -1,0 +1,14 @@
+cd /Users/gzhou/git/gemfire/open/geode-assembly/build/install/apache-geode
+bin/gfsh
+start locator --name=locator1 --port=12345 --classpath=/Users/gzhou/git/lucene_example/lucene_example.jar
+gfsh>list lucene indexes
+ Index Name   | Region Path |                           Indexed Fields                           |                    Field Analyzer                    | Status
+------------- | ----------- | ------------------------------------------------------------------ | ---------------------------------------------------- | -----------
+analyzerIndex | /Person     | [address, name, email]                                             | {address=MyCharacterAnalyzer, email=KeywordAnalyzer} | Initialized
+customerIndex | /Customer   | [symbol, revenue, SSN, name, email, address, __REGION_VALUE_FIELD] | {}                                                   | Initialized
+pageIndex     | /Page       | [symbol, name, email, address]                                     | {}                                                   | Initialized
+personIndex   | /Person     | [name, email, address, streetAddress, revenue]                     | {}                                                   | Initialized
+
+gfsh>describe lucene index --name=personIndex --region=/Person
+
+gfsh>lucene search --region=/Person --name=personIndex --defaultField=name --queryStrings=Tom9*
