@@ -91,11 +91,8 @@ public class Main {
     prog.doDump("customerIndex", "Customer");
     prog.doDump("analyzerIndex", "Person");
     
-    System.out.println("Press Space to exit");
-    int c;
-    while ((c = System.in.read())==-1) Thread.sleep(10);
-    System.out.println("GGG:"+c);
-
+    System.out.println("Press any key to exit");
+    int c = System.in.read();
     } finally {
       prog.stopServer();
     }
