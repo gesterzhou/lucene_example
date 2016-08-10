@@ -1,14 +1,126 @@
-cd /Users/gzhou/git/gemfire/open/geode-assembly/build/install/apache-geode
+export GEMIFRE=/Users/gzhou/git2/incubator-geode/geode-assembly/build/install/apache-geode
+
+cd $GEMFIRE
 bin/gfsh
-start locator --name=locator1 --port=12345 --classpath=/Users/gzhou/git/lucene_example/lucene_example.jar
-gfsh>list lucene indexes
- Index Name   | Region Path |                           Indexed Fields                           |                    Field Analyzer                    | Status
-------------- | ----------- | ------------------------------------------------------------------ | ---------------------------------------------------- | -----------
-analyzerIndex | /Person     | [address, name, email]                                             | {address=MyCharacterAnalyzer, email=KeywordAnalyzer} | Initialized
-customerIndex | /Customer   | [symbol, revenue, SSN, name, email, address, __REGION_VALUE_FIELD] | {}                                                   | Initialized
-pageIndex     | /Page       | [symbol, name, email, address]                                     | {}                                                   | Initialized
-personIndex   | /Person     | [name, email, address, streetAddress, revenue]                     | {}                                                   | Initialized
+
+start locator --name=locator1 --port=12345 --classpath=/Users/gzhou/git/lucene_example/build/libs/lucene_example-0.0.1.jar
+
+export APPDIR=/Users/gzhou/git/lucene_example
+cd $APPDIR
+./gradlew run
+
+====================
+# show index definition including analyzers
+# show index usage in stats
+gfsh>list lucene indexes --with-stats
+ Index Name   | Region Path | Index.. |                    Field Analyzer                    |   Status    | Query Executions | Updates | Commits | Documents
+------------- | ----------- | ------- | ---------------------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
+analyzerIndex | /Person     | [addr.. | {address=MyCharacterAnalyzer, email=KeywordAnalyzer} | Initialized | 1695             | 1008    | 962     | 1004
+customerIndex | /Customer   | [symb.. | {}                                                   | Initialized | 678              | 4       | 4       | 4
+pageIndex     | /Page       | [symb.. | {}                                                   | Initialized | 0                | 0       | 0       | 0
+personIndex   | /Person     | [name.. | {}                                                   | Initialized | 339              | 1008    | 962     | 1004
+
 
 gfsh>describe lucene index --name=personIndex --region=/Person
+Index Name  | Region Path |                 Indexed Fields                 | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
+----------- | ----------- | ---------------------------------------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
+personIndex | /Person     | [name, email, address, streetAddress, revenue] | {}             | Initialized | 339              | 1008    | 962     | 1004
 
-gfsh>lucene search --region=/Person --name=personIndex --defaultField=name --queryStrings=Tom9*
+gfsh>describe lucene index --name=analyzerIndex --region=/Person
+ Index Name   | Region Path |     Indexed Fields     |            Field Analyzer             |   Status    | Query Executions | Updates | Commits | Documents
+------------- | ----------- | ---------------------- | ------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
+analyzerIndex | /Person     | [address, name, email] | {address=MyCharacterAnalyzer, email.. | Initialized | 1695             | 1008    | 962     | 1004
+
+=======================
+gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD
+                 Member                  | Status
+---------------------------------------- | ---------------------------------
+192.168.1.42(server1:26351)<ec><v1>:1025 | Successfully created lucene index
+
+gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD
+                 Member                  | Status
+---------------------------------------- | ---------------------------------------------
+192.168.1.42(server1:26351)<ec><v1>:1025 | Failed: Lucene index already exists in region
+
+gfsh>list lucene indexes --with-stats
+ Index Name   | Region Path | Index.. |                    Field Analyzer                    |   Status    | Query Executions | Updates | Commits | Documents
+------------- | ----------- | ------- | ---------------------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
+analyzerIndex | /Person     | [addr.. | {address=MyCharacterAnalyzer, email=KeywordAnalyzer} | Initialized | 1695             | 1008    | 962     | 1004
+customerIndex | /Customer   | [symb.. | {}                                                   | Initialized | 678              | 4       | 4       | 4
+pageIndex     | /Page       | [symb.. | {}                                                   | Initialized | 0                | 0       | 0       | 0
+personIndex   | /Person     | [name.. | {}                                                   | Initialized | 339              | 1008    | 962     | 1004
+testIndex     | /testRegion | [__RE.. | {}                                                   | Defined     | NA               | NA      | NA      | NA
+
+gfsh>describe lucene index --name=testIndex --region=/testRegion
+Index Name | Region Path |     Indexed Fields     | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
+---------- | ----------- | ---------------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
+testIndex  | /testRegion | [__REGION_VALUE_FIELD] | {}             | Initialized | 0                | 0       | 0       | 0
+
+
+
+========================
+gfsh>put --key=1 --value=value1
+Parameter "region" is required. Use "help <command name>" for assistance.
+gfsh>put --key=1 --value=value1 --region=testRegion
+Result      : true
+Key Class   : java.lang.String
+Key         : 1
+Value Class : java.lang.String
+Old Value   : <NULL>
+
+
+gfsh>put --key=2 --value=value2 --region=testRegion
+Result      : true
+Key Class   : java.lang.String
+Key         : 2
+Value Class : java.lang.String
+Old Value   : <NULL>
+
+
+gfsh>put --key=3 --value=value3 --region=testRegion
+Result      : true
+Key Class   : java.lang.String
+Key         : 3
+Value Class : java.lang.String
+Old Value   : <NULL>
+
+
+gfsh>search lucene --
+ --name            --region          --queryStrings    --defaultField   
+gfsh>search lucene --name=tes --
+ --region          --queryStrings    --defaultField   
+gfsh>search lucene --name=testIndex --
+ --region          --queryStrings    --defaultField   
+gfsh>search lucene --name=testIndex --region=/
+=/Customer     =/Page         =/Person       =/testRegion   
+gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=value1 --defaultField=__REGION_VALUE_FIELD
+key | value  | score
+--- | ------ | ---------
+1   | value1 | 0.2876821
+
+gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=value* --defaultField=__REGION_VALUE_FIELD
+key | value  | score
+--- | ------ | -----
+1   | value1 | 1
+3   | value3 | 1
+2   | value2 | 1
+
+gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings=Tom3* --limit=5
+
+gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom36* OR Tom422"
+
+# query using keyword analyzer 
+gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom42* OR email:t*490@example.com"
+Note: it will NOT show key490
+
+gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom42* OR email:t*490 example.com"
+Note: it will show key490
+
+gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=name --queryStrings="Tom42* OR email:t*490@example.com"
+Note: it will show key490
+
+gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom*JSON"
+  key    |                                                                   value                                                                    | score
+-------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -----
+jsondoc2 | PDX[3,__GEMFIRE_JSON]{address=PDX[1,__GEMFIRE_JSON]{city=New York, postalCode=10021, state=NY, streetAddress=21 2nd Street}, age=25, las.. | 1
+jsondoc1 | PDX[3,__GEMFIRE_JSON]{address=PDX[1,__GEMFIRE_JSON]{city=New York, postalCode=10021, state=NY, streetAddress=21 2nd Street}, age=25, las.. | 1
