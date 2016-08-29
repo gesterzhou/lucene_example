@@ -35,6 +35,7 @@ import com.gemstone.gemfire.cache.lucene.internal.LuceneIndexForPartitionedRegio
 import com.gemstone.gemfire.cache.lucene.internal.LuceneIndexImpl;
 import com.gemstone.gemfire.cache.lucene.internal.LuceneServiceImpl;
 import com.gemstone.gemfire.distributed.ServerLauncher;
+import com.gemstone.gemfire.distributed.ServerLauncher.Builder;
 import com.gemstone.gemfire.internal.logging.LogService;
 import com.gemstone.gemfire.pdx.JSONFormatter;
 import com.gemstone.gemfire.pdx.PdxInstance;
@@ -47,6 +48,8 @@ public class Main {
   Region CustomerRegion;
   Region PageRegion;
   LuceneServiceImpl service;
+  static int serverPort = 40405;
+  static boolean useLocator = false;
   
   final static int ENTRY_COUNT = 1000;
   final static Logger logger = LogService.getLogger();
@@ -60,7 +63,13 @@ public class Main {
     Main prog = new Main();
     try {
 //    System.setProperty("gemfire.NotUsing.RegionDirectory", "true");
-    prog.createCache(40405);
+    if (args.length > 0) {
+      serverPort = Integer.valueOf(args[0]);
+    }
+    if (args.length > 1) {
+      useLocator = Boolean.valueOf(args[1]);
+    }
+    prog.createCache(serverPort);
     
     // note: we have to create lucene index before the region
     prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);
@@ -103,18 +112,21 @@ public class Main {
       return;
     }
     
-    serverLauncher  = new ServerLauncher.Builder()
-    .setMemberName("server1")
-    .setServerPort(port)
-    .setPdxPersistent(true)
-    .set("locators", "localhost[12345]")
-    .set("mcast-port", "0")
-    .set("enable-time-statistics","true")
-    .set("statistic-sample-rate","1000")
-    .set("statistic-sampling-enabled", "true")
-    .set("statistic-archive-file", "server1.gfs")
-//    .set("log-level", "debug")
-    .build();
+    Builder builder = new ServerLauncher.Builder()
+        .setMemberName("server1")
+        .setServerPort(port)
+        .setPdxPersistent(true)
+        .set("mcast-port", "0")
+        .set("enable-time-statistics","true")
+        .set("statistic-sample-rate","1000")
+        .set("statistic-sampling-enabled", "true")
+        .set("statistic-archive-file", "server1.gfs")
+//        .set("log-level", "debug")
+        ;
+    if (useLocator) {
+      builder.set("locators", "localhost[12345]");
+    }
+    serverLauncher  = builder.build();
 
     serverLauncher.start();
     System.out.println("Server started!");
