@@ -113,7 +113,7 @@ public class Main {
     }
     
     Builder builder = new ServerLauncher.Builder()
-        .setMemberName("server1")
+        .setMemberName("server"+port)
         .setServerPort(port)
         .setPdxPersistent(true)
         .set("mcast-port", "0")
