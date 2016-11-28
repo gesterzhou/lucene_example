@@ -18,6 +18,8 @@ import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.util.CharTokenizer;
 import org.apache.lucene.queryparser.classic.ParseException;
 
+import examples.IntegerRangeQueryProvider.IntRangeQueryProvider2;
+
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.CacheFactory;
 import org.apache.geode.cache.DataPolicy;
@@ -36,6 +38,7 @@ import org.apache.geode.cache.lucene.internal.LuceneIndexImpl;
 import org.apache.geode.cache.lucene.internal.LuceneServiceImpl;
 import org.apache.geode.distributed.ServerLauncher;
 import org.apache.geode.distributed.ServerLauncher.Builder;
+import org.apache.geode.internal.DSFIDFactory;
 import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.pdx.JSONFormatter;
 import org.apache.geode.pdx.PdxInstance;
@@ -69,6 +72,7 @@ public class Main {
       if (args.length > 1) {
         useLocator = Boolean.valueOf(args[1]);
       }
+      registerDataSerializables();
       prog.createCache(serverPort);
 
       // note: we have to create lucene index before the region
@@ -85,16 +89,16 @@ public class Main {
       prog.queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
       prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO *]");
       prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO 223]");
-      prog.queryByInRange("customerIndex", "Customer", "SSN", 456, Integer.MAX_VALUE);
+      prog.queryByIntRange("customerIndex", "Customer", "SSN", 456, Integer.MAX_VALUE);
 
-      prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD, 123, 123);
-      prog.queryByInRange("personIndex", "Person", "revenue", 3000, 5000);
+      prog.queryByInRange1("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD, 123, 123);
+      prog.queryByInRange2("personIndex", "Person", "revenue", 3000, 5000);
 
       //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123000.0 TO 123000.0]");
       //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":1230*");
       //    prog.doSearch("pageIndex", "Page", "id:10");
 
-      prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
+//      prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
 
       prog.doDump("personIndex", "Person");
       prog.doDump("customerIndex", "Customer");
@@ -135,6 +139,11 @@ public class Main {
     service = (LuceneServiceImpl) LuceneServiceProvider.get(cache);
   }
 
+  public static void registerDataSerializables() {
+    DSFIDFactory.registerDSFID(IntegerRangeQueryProvider.LUCENE_INTEGER_RANGE_QUERY_PROVIDER, IntegerRangeQueryProvider.class);
+    IntRangeQueryProvider2 c = new IntRangeQueryProvider2();
+  }
+  
   private void stopServer() {
     if (serverLauncher != null) {
       serverLauncher.stop();
@@ -403,14 +412,30 @@ public class Main {
     getResults(query, regionName);
   }
 
-  private void queryByInRange(String indexName, String regionName, String fieldName, int lowerValue, int upperValue) throws LuceneQueryException {
+  private void queryByIntRange(String indexName, String regionName, String fieldName, int lowerValue, int upperValue) throws LuceneQueryException {
+    System.out.println("Query range is:"+fieldName+":["+lowerValue+" TO "+upperValue+"]");
+    IntRangeQueryProvider provider = new IntRangeQueryProvider(fieldName, lowerValue, upperValue);
+    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
+
+    getResults(query, regionName);
+  }
+  
+  private void queryByInRange1(String indexName, String regionName, String fieldName, int lowerValue, int upperValue) throws LuceneQueryException {
     System.out.println("Query range is:"+fieldName+":["+lowerValue+" TO "+upperValue+"]");
     IntegerRangeQueryProvider provider = new IntegerRangeQueryProvider(fieldName, lowerValue, upperValue);
     LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
 
     getResults(query, regionName);
   }
+  
+  private void queryByInRange2(String indexName, String regionName, String fieldName, int lowerValue, int upperValue) throws LuceneQueryException {
+    System.out.println("Query range is:"+fieldName+":["+lowerValue+" TO "+upperValue+"]");
+    IntRangeQueryProvider2 provider = new IntRangeQueryProvider2(fieldName, lowerValue, upperValue);
+    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
 
+    getResults(query, regionName);
+  }
+  
   private void verifyQuery(String indexName, String regionName, String queryString, String... expectedKeys) throws LuceneQueryException {
     LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, queryString, "name");
     if (query == null) {

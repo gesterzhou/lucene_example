@@ -35,6 +35,7 @@ public class IntRangeQueryProvider implements LuceneQueryProvider {
     if (luceneQuery == null) {
       luceneQuery = IntPoint.newRangeQuery(fieldName, lowerValue, upperValue);
     }
+    System.out.println("IntRangeQueryProvider, using java serializable");
     return luceneQuery;
   }
 

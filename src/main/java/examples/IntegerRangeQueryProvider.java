@@ -4,6 +4,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import org.apache.geode.DataSerializable;
 import org.apache.geode.DataSerializer;
 import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.cache.lucene.LuceneQueryException;
@@ -32,7 +33,6 @@ implements LuceneQueryProvider, DataSerializableFixedID {
 
   @Override
   public int getDSFID() {
-    System.out.println("GGG:"+3001);
     return LUCENE_INTEGER_RANGE_QUERY_PROVIDER;
   }
 
@@ -60,8 +60,48 @@ implements LuceneQueryProvider, DataSerializableFixedID {
     if (luceneQuery == null) {
       luceneQuery = IntPoint.newRangeQuery(fieldName, lowerValue, upperValue);
     }
-    System.out.println("GGG:myquery");
+    System.out.println("IntegerRangeQueryProvider, using DataSerializableFixedID");
     return luceneQuery;
+  }
+  
+  static class IntRangeQueryProvider2 implements DataSerializable, LuceneQueryProvider {
+    String fieldName;
+    int lowerValue;
+    int upperValue;
+    private transient Query luceneQuery;
+    
+    public IntRangeQueryProvider2(String fieldName, int lowerValue, int upperValue) {
+      this.fieldName = fieldName;
+      this.lowerValue = lowerValue;
+      this.upperValue = upperValue;
+    }
+    
+    public IntRangeQueryProvider2() {}
+
+    @Override
+    public void toData(DataOutput out) throws IOException {
+      DataSerializer.writeString(fieldName, out);
+      out.writeInt(lowerValue);
+      out.writeInt(upperValue);
+    }
+
+    @Override
+    public void fromData(DataInput in)
+        throws IOException, ClassNotFoundException {
+      fieldName = DataSerializer.readString(in);
+      lowerValue = in.readInt();
+      upperValue = in.readInt();
+    }
+
+    @Override
+    public Query getQuery(LuceneIndex index) throws LuceneQueryException {
+      if (luceneQuery == null) {
+        luceneQuery = IntPoint.newRangeQuery(fieldName, lowerValue, upperValue);
+      }
+      System.out.println("IntRangeQueryProvider2, using DataSerializable");
+      return luceneQuery;
+    }
+    
   }
 }
 
