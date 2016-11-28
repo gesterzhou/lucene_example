@@ -17,8 +17,7 @@ import org.apache.geode.internal.Version;
 /* Example: 
  * 
  */
-public class IntRangeQueryProvider implements LuceneQueryProvider, DataSerializableFixedID {
-  public static final short LUCENE_INT_RANGE_QUERY_PROVIDER = 2177;
+public class IntRangeQueryProvider implements LuceneQueryProvider {
   String fieldName;
   int lowerValue;
   int upperValue;
@@ -30,32 +29,7 @@ public class IntRangeQueryProvider implements LuceneQueryProvider, DataSerializa
     this.lowerValue = lowerValue;
     this.upperValue = upperValue;
   }
-
-  @Override
-  public Version[] getSerializationVersions() {
-    return null;
-  }
-
-  @Override
-  public int getDSFID() {
-    return LUCENE_INT_RANGE_QUERY_PROVIDER;
-  }
-
-  @Override
-  public void toData(DataOutput out) throws IOException {
-    DataSerializer.writeString(fieldName, out);
-    out.writeInt(lowerValue);
-    out.writeInt(upperValue);
-  }
-
-  @Override
-  public void fromData(DataInput in)
-      throws IOException, ClassNotFoundException {
-    fieldName = DataSerializer.readString(in);
-    lowerValue = in.readInt();
-    upperValue = in.readInt();
-  }
-
+  
   @Override
   public Query getQuery(LuceneIndex index) throws LuceneQueryException {
     if (luceneQuery == null) {

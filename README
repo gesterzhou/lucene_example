@@ -7,7 +7,11 @@ start locator --name=locator1 --port=12345 --classpath=/Users/gzhou/git3/lucene_
 
 export APPDIR=/Users/gzhou/git/lucene_example
 cd $APPDIR
-./gradlew run
+./gradlew run -PappArgs="['50505', 'true']"
+
+if needs to run another instance,
+cd $APPDIR2
+./gradlew run -PappArgs="['50506', 'true']"
 
 ====================
 # show index definition including analyzers
@@ -50,6 +54,26 @@ customerIndex | /Customer   | [symb.. | {}                                      
 pageIndex     | /Page       | [symb.. | {}                                                   | Initialized | 0                | 0       | 0       | 0
 personIndex   | /Person     | [name.. | {}                                                   | Initialized | 339              | 1008    | 962     | 1004
 testIndex     | /testRegion | [__RE.. | {}                                                   | Defined     | NA               | NA      | NA      | NA
+
+gfsh>create region --name=testRegion --total-num-buckets=10 --type=PARTITION
+=PARTITION                                 =PARTITION_REDUNDANT                       =PARTITION_PERSISTENT                      
+=PARTITION_REDUNDANT_PERSISTENT            =PARTITION_OVERFLOW                        =PARTITION_REDUNDANT_OVERFLOW              
+=PARTITION_PERSISTENT_OVERFLOW             =PARTITION_REDUNDANT_PERSISTENT_OVERFLOW   =PARTITION_HEAP_LRU                        
+=PARTITION_REDUNDANT_HEAP_LRU              =PARTITION_PROXY                           =PARTITION_PROXY_REDUNDANT                 
+gfsh>create region --name=testRegion --type=PARTITION
+  Member    | Status
+----------- | ---------------------------------------------
+server50505 | Region "/testRegion" created on "server50505"
+
+gfsh>list lucene indexes --with-stats
+ Index Name   | Region Path |  Indexed Fields   | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
+------------- | ----------- | ----------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
+analyzerIndex | /Person     | [address, name,.. | {address=MyC.. | Initialized | 1695             | 1008    | 581     | 1004
+customerIndex | /Customer   | [symbol, revenu.. | {}             | Initialized | 678              | 4       | 4       | 4
+pageIndex     | /Page       | [symbol, name, .. | {}             | Initialized | 0                | 0       | 0       | 0
+personIndex   | /Person     | [name, email, a.. | {}             | Initialized | 339              | 1008    | 528     | 1004
+testIndex     | /testRegion | [__REGION_VALUE.. | {}             | Initialized | 0                | 0       | 0       | 0
+
 
 gfsh>describe lucene index --name=testIndex --region=/testRegion
 Index Name | Region Path |     Indexed Fields     | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
