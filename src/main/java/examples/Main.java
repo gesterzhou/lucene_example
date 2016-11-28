@@ -89,8 +89,10 @@ public class Main {
       prog.queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
       prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO *]");
       prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO 223]");
+      
+      System.out.println();
+      System.out.println();
       prog.queryByIntRange("customerIndex", "Customer", "SSN", 456, Integer.MAX_VALUE);
-
       prog.queryByInRange1("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD, 123, 123);
       prog.queryByInRange2("personIndex", "Person", "revenue", 3000, 5000);
 
