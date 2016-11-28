@@ -7,12 +7,12 @@ import java.io.IOException;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.search.Query;
 
-import com.gemstone.gemfire.DataSerializer;
-import com.gemstone.gemfire.cache.lucene.LuceneIndex;
-import com.gemstone.gemfire.cache.lucene.LuceneQueryException;
-import com.gemstone.gemfire.cache.lucene.LuceneQueryProvider;
-import com.gemstone.gemfire.internal.DataSerializableFixedID;
-import com.gemstone.gemfire.internal.Version;
+import org.apache.geode.DataSerializer;
+import org.apache.geode.cache.lucene.LuceneIndex;
+import org.apache.geode.cache.lucene.LuceneQueryException;
+import org.apache.geode.cache.lucene.LuceneQueryProvider;
+import org.apache.geode.internal.DataSerializableFixedID;
+import org.apache.geode.internal.Version;
 
 /* Example: 
  * 

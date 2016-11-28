@@ -1,9 +1,9 @@
-export GEMIFRE=/Users/gzhou/git2/incubator-geode/geode-assembly/build/install/apache-geode
+export GEMIFRE=/Users/gzhou/git3/gemfire/open/geode-assembly/build/install/apache-geode
 
 cd $GEMFIRE
 bin/gfsh
 
-start locator --name=locator1 --port=12345 --classpath=/Users/gzhou/git/lucene_example/build/libs/lucene_example-0.0.1.jar
+start locator --name=locator1 --port=12345 --classpath=/Users/gzhou/git3/lucene_example/build/libs/lucene_example-0.0.1.jar
 
 export APPDIR=/Users/gzhou/git/lucene_example
 cd $APPDIR
