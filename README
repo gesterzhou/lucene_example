@@ -7,6 +7,8 @@ start locator --name=locator1 --port=12345 --classpath=/Users/gzhou/git3/lucene_
 
 export APPDIR=/Users/gzhou/git/lucene_example
 cd $APPDIR
+export GEMIFRE=/Users/gzhou/git3/gemfire/open/geode-assembly/build/install/apache-geode
+export GEODE_HOME=C:/cygwin64/home/zhouxh/git6/gemfire/open/geode-assembly/build/install/apache-geode
 ./gradlew run -PappArgs="['50505', 'true']"
 
 if needs to run another instance,

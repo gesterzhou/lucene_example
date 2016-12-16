@@ -37,6 +37,7 @@ dependencies {
     compile "org.apache.geode:geode-common:1.1.0-SNAPSHOT"
     compile "org.apache.geode:geode-core:1.1.0-SNAPSHOT"
     compile "org.apache.geode:geode-lucene:1.1.0-SNAPSHOT"
+    compile "org.apache.geode:geode-web-api:1.1.0-SNAPSHOT"
 
     // compile "org.apache.geode:geode-common:1.0.0-incubating.M3"
     // compile "org.apache.geode:geode-core:1.0.0-incubating.M3"
@@ -44,7 +45,15 @@ dependencies {
 
     compile "org.springframework.shell:spring-shell:1.1.0.RELEASE"
     compile "org.springframework:spring-core:4.2.4.RELEASE"
-    // compile "org.slf4j:slf4j-log4j12:1.7.21"
+    compile "org.slf4j:slf4j-log4j12:1.7.21"
+    compile "org.eclipse.jetty:jetty-server:9.3.6.v20151106"
+    compile "org.eclipse.jetty:jetty-webapp:9.3.6.v20151106"
+    compile "org.eclipse.jetty:jetty-util:9.3.6.v20151106"
+    compile "org.eclipse.jetty:jetty-io:9.3.6.v20151106"
+    compile "org.eclipse.jetty:jetty-http:9.3.6.v20151106"
+    compile "org.eclipse.jetty:jetty-security:9.3.6.v20151106"
+    compile "org.eclipse.jetty:jetty-xml:9.3.6.v20151106"
+    compile "org.eclipse.jetty:jetty-servlet:9.3.6.v20151106"
 
     // compile files("../../git6/gemfire/open/geode-assembly/build/install/apache-geode/lib/geode-common-9.0.0-SNAPSHOT.jar")
     // compile files("../../git6/gemfire/open/geode-assembly/build/install/apache-geode/lib/geode-core-9.0.0-SNAPSHOT.jar")

@@ -127,6 +127,11 @@ public class Main {
         .set("statistic-sample-rate","1000")
         .set("statistic-sampling-enabled", "true")
         .set("statistic-archive-file", "server1.gfs")
+//        .set("ssl-enabled-components", "web")
+        .set("start-dev-rest-api", "true")
+        .set("http-service-port","8080")
+        .set("http-service-bind-address", "localhost")
+        
         //        .set("log-level", "debug")
         ;
     if (useLocator) {
