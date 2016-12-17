@@ -15,6 +15,10 @@ apply plugin: 'application'
 mainClassName = "examples.Main"
 
 // ./gradlew run -PappArgs="['a','shd','123']"
+run.doFirst { 
+  environment 'GEMFIRE', '/Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode'
+}
+
 run {
   if ( project.hasProperty("appArgs") ) {
     args Eval.me(appArgs)

@@ -72,35 +72,42 @@ public class Main {
       if (args.length > 1) {
         useLocator = Boolean.valueOf(args[1]);
       }
+      boolean serverOnly = false;
+      if (args.length > 2) {
+        serverOnly = Boolean.valueOf(args[2]);
+      }
       registerDataSerializables();
       prog.createCache(serverPort);
 
       // note: we have to create lucene index before the region
       prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);
-      prog.feed(ENTRY_COUNT);
-      prog.waitUntilFlushed("personIndex", "Person");
-      prog.waitUntilFlushed("customerIndex", "Customer");
 
-      // now let's do search on lucene index
-      prog.queryByStringQueryParser("personIndex", "Person", "name:Tom9*");
-      prog.queryByStringQueryParser("personIndex", "Person", "streetAddress:21*");
-      prog.queryByStringQueryParser("customerIndex", "Customer", "name:Tom123");
+      if (!serverOnly) {
+        prog.feed(ENTRY_COUNT);
+        prog.waitUntilFlushed("personIndex", "Person");
+        prog.waitUntilFlushed("customerIndex", "Customer");
 
-      prog.queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
-      prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO *]");
-      prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO 223]");
-      
-      System.out.println();
-      System.out.println();
-      prog.queryByIntRange("customerIndex", "Customer", "SSN", 456, Integer.MAX_VALUE);
-      prog.queryByInRange1("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD, 123, 123);
-      prog.queryByInRange2("personIndex", "Person", "revenue", 3000, 5000);
+        // now let's do search on lucene index
+        prog.queryByStringQueryParser("personIndex", "Person", "name:Tom9*");
+        prog.queryByStringQueryParser("personIndex", "Person", "streetAddress:21*");
+        prog.queryByStringQueryParser("customerIndex", "Customer", "name:Tom123");
 
-      //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123000.0 TO 123000.0]");
-      //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":1230*");
-      //    prog.doSearch("pageIndex", "Page", "id:10");
+        prog.queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
+        prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO *]");
+        prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO 223]");
 
-//      prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
+        System.out.println();
+        System.out.println();
+        prog.queryByIntRange("customerIndex", "Customer", "SSN", 456, Integer.MAX_VALUE);
+        prog.queryByInRange1("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD, 123, 123);
+        prog.queryByInRange2("personIndex", "Person", "revenue", 3000, 5000);
+
+        //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123000.0 TO 123000.0]");
+        //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":1230*");
+        //    prog.doSearch("pageIndex", "Page", "id:10");
+
+        //      prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
+      }
 
       prog.doDump("personIndex", "Person");
       prog.doDump("customerIndex", "Customer");
@@ -118,6 +125,7 @@ public class Main {
       return;
     }
 
+    System.out.println("GEMFIRE="+System.getenv("GEMFIRE"));
     Builder builder = new ServerLauncher.Builder()
         .setMemberName("server"+port)
         .setServerPort(port)
@@ -127,7 +135,6 @@ public class Main {
         .set("statistic-sample-rate","1000")
         .set("statistic-sampling-enabled", "true")
         .set("statistic-archive-file", "server1.gfs")
-//        .set("ssl-enabled-components", "web")
         .set("start-dev-rest-api", "true")
         .set("http-service-port","8080")
         .set("http-service-bind-address", "localhost")
