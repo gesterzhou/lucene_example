@@ -73,10 +73,10 @@ public class Main {
    * 3: client
    */
   public static void main(final String[] args) throws LuceneQueryException, IOException, InterruptedException {
-    System.out.println("There are "+args.length+" arguments.");
-    for (int i=0; i<args.length; i++) {
-      System.out.println("arg"+i+":"+args[i]);
-    }
+//    System.out.println("There are "+args.length+" arguments.");
+//    for (int i=0; i<args.length; i++) {
+//      System.out.println("arg"+i+":"+args[i]);
+//    }
 
     Main prog = new Main();
     try {
@@ -213,24 +213,29 @@ public class Main {
   }
 
   public void doQuery() throws LuceneQueryException {
+    System.out.println("Regular query on standard analyzer:");
     queryByStringQueryParser("personIndex", "Person", "name:Tom9*");
+    System.out.println("streetAddress is at 2nd layer field, it will not be searched and return nothing");
     queryByStringQueryParser("personIndex", "Person", "streetAddress:21*");
-    queryByStringQueryParser("customerIndex", "Customer", "name:Tom123");
-
+    System.out.println("\nsearch region customer for symbol 123 and 456");
+    queryByStringQueryParser("customerIndex", "Customer", "symbol:123");
     queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
+    
+    System.out.println("\nInteger value cannot be found using string");
+    System.out.println("  value 123 is saved as int, value 223 is saved as String.");
     queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO *]");
     queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO 223]");
 
-    System.out.println();
+    System.out.println("\nExamples of QueryProvider: 3 different implementations");
     queryByIntRange("customerIndex", "Customer", "SSN", 456, Integer.MAX_VALUE);
     queryByInRange1("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD, 123, 123);
     queryByInRange2("personIndex", "Person", "revenue", 3000, 5000);
 
-    //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123000.0 TO 123000.0]");
-    //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":1230*");
-    //  prog.doSearch("pageIndex", "Page", "id:10");
+//    queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123000.0 TO 123000.0]");
+//    queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":1230*");
+//    queryByStringQueryParser("pageIndex", "Page", "id:10");
 
-    //  prog.feedAndDoSpecialSearch("analyzerIndex", "Person");    
+//    feedAndDoSpecialSearch("analyzerIndex", "Person");    
   }
   
   // for test purpose
@@ -276,7 +281,7 @@ public class Main {
 
   private void insertPrimitiveTypeValue(Region region) {
     region.put("primitiveInt1", 123);
-    region.put("primitiveInt2", 223);
+    region.put("primitiveInt2", "223");
     //    region.put("primitiveDouble1", 123000.0);
     //    region.put("primitiveString1", "123");
     //    region.put("primitiveString2", "22");
@@ -478,7 +483,7 @@ public class Main {
   }
   
   private void queryByInRange1(String indexName, String regionName, String fieldName, int lowerValue, int upperValue) throws LuceneQueryException {
-    System.out.println("Query range is:"+fieldName+":["+lowerValue+" TO "+upperValue+"]");
+    System.out.println("\nQuery range is:"+fieldName+":["+lowerValue+" TO "+upperValue+"]");
     IntegerRangeQueryProvider provider = new IntegerRangeQueryProvider(fieldName, lowerValue, upperValue);
     LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
 
@@ -486,7 +491,7 @@ public class Main {
   }
   
   private void queryByInRange2(String indexName, String regionName, String fieldName, int lowerValue, int upperValue) throws LuceneQueryException {
-    System.out.println("Query range is:"+fieldName+":["+lowerValue+" TO "+upperValue+"]");
+    System.out.println("\nQuery range is:"+fieldName+":["+lowerValue+" TO "+upperValue+"]");
     IntRangeQueryProvider2 provider = new IntRangeQueryProvider2(fieldName, lowerValue, upperValue);
     LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
 
