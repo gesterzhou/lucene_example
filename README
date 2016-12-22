@@ -14,6 +14,7 @@ Following gemfire lucene features are tested:
 - start a REST server to show the contents
 - REST API to do lucene search (TBD)
 - soundex query (TBD)
+- dump the index from region into pure lucene file format to be viewed by 3rd party tool such as luke.
 
 It can be run standalone, or in a cluster contains server 
 with feeder, server only, client. Both server with feeder 
@@ -21,10 +22,13 @@ and client will do the same lucene queries.
 
 The feeding can be done by client too, but testing feed-from-client is not the objective, query-from-client is.
 
+Where is the source code:
+------------------------
 git clone git@github.com:gesterzhou/lucene_example.git
 
-Note: 
-REST URL:  http://localhost:8081/gemfire-api/docs/index.html
+REST URL:  
+---------
+http://localhost:8081/gemfire-api/docs/index.html
 
 step 0: run a standalone test
 -----------------------------
@@ -169,16 +173,25 @@ gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --que
 
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom36* OR Tom422"
 
-# query using keyword analyzer, personIndex uses KeywordAnalyzer for field "name"
-gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom42* OR email:t*490@example.com"
-Note: it will NOT show key490
+# query using keyword analyzer, analyzerIndex uses KeywordAnalyzer for field "email"
+gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=email --queryStrings="email:tzhou490@example.com"
+ key   |                                                         value                                                          | score
+------ | ---------------------------------------------------------------------------------------------------------------------- | -------
+key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 Lindon St, Portland_OR_97490', revenue='490000'} | 1.89712
+Note: only found key490.
 
-gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom42* OR email:t*490 example.com"
-Note: it will show key490
+gfsh>search lucene --name=personIndex --region=/Person --defaultField=email --queryStrings="email:tzhou490@example.com"
+ key   |                                                         value                                                          | score
+------ | ---------------------------------------------------------------------------------------------------------------------- | -----------
+key330 | Person{name='Tom330 Zhou', email='tzhou330@example.com', address='330 Lindon St, Portland_OR_97330', revenue='330000'} | 0.05790569
+key70  | Person{name='Tom70 Zhou', email='tzhou70@example.com', address='70 Lindon St, Portland_OR_97070', revenue='70000'}     | 0.05790569
+key110 | Person{name='Tom110 Zhou', email='tzhou110@example.com', address='110 Lindon St, Portland_OR_97110', revenue='110000'} | 0.05790569
+key73  | Person{name='Tom73 Zhou', email='tzhou73@example.com', address='73 Lindon St, Portland_OR_97073', revenue='73000'}     | 0.05790569
+key614 | Person{name='Tom614 Zhou', email='tzhou614@example.com', address='614 Lindon St, Portland_OR_97614', revenue='614000'} | 0.05790569
+key413 | Person{name='Tom413 Zhou', email='tzhou413@example.com', address='413 Lindon St, Portland_OR_97413', revenue='413000'} | 0.07806893
+key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 Lindon St, Portland_OR_97490', revenue='490000'} | 1.7481685
 
-# analyzerIndex is using standard analyzer for field "name"
-gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=name --queryStrings="Tom42* OR email:t*490@example.com"
-Note: it will show key490
+Note: found a lot due to search by "example.com", because personIndex is using standard analyzer for field "email".
 
 # query json object
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom*JSON"
