@@ -23,9 +23,14 @@ import examples.IntegerRangeQueryProvider.IntRangeQueryProvider2;
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.CacheFactory;
 import org.apache.geode.cache.DataPolicy;
+import org.apache.geode.cache.GemFireCache;
 import org.apache.geode.cache.Region;
 import org.apache.geode.cache.RegionFactory;
 import org.apache.geode.cache.RegionShortcut;
+import org.apache.geode.cache.client.ClientCache;
+import org.apache.geode.cache.client.ClientCacheFactory;
+import org.apache.geode.cache.client.ClientRegionFactory;
+import org.apache.geode.cache.client.ClientRegionShortcut;
 import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.cache.lucene.LuceneQuery;
 import org.apache.geode.cache.lucene.LuceneQueryException;
@@ -46,17 +51,27 @@ import org.apache.geode.pdx.PdxInstance;
 public class Main {
   // private final Version version = Version.LUCENE_5_3_0;
   ServerLauncher serverLauncher;
-  Cache cache;
+  GemFireCache cache;
   Region PersonRegion;
   Region CustomerRegion;
   Region PageRegion;
   LuceneServiceImpl service;
-  static int serverPort = 40405;
+  static int serverPort = 50505;
   static boolean useLocator = false;
 
   final static int ENTRY_COUNT = 1000;
   final static Logger logger = LogService.getLogger();
 
+  final static int SERVER_WITH_FEEDER = 1;
+  final static int SERVER_ONLY = 2;
+  final static int CLIENT = 3;
+  static int instanceType = SERVER_WITH_FEEDER;
+  
+  /* Usage: ~ [1|2|3 [serverPort [isUsingLocator]]]
+   * 1: server with feeder
+   * 2: server only 
+   * 3: client
+   */
   public static void main(final String[] args) throws LuceneQueryException, IOException, InterruptedException {
     System.out.println("There are "+args.length+" arguments.");
     for (int i=0; i<args.length; i++) {
@@ -67,59 +82,63 @@ public class Main {
     try {
       //    System.setProperty("gemfire.NotUsing.RegionDirectory", "true");
       if (args.length > 0) {
-        serverPort = Integer.valueOf(args[0]);
+        instanceType = Integer.valueOf(args[0]);
       }
       if (args.length > 1) {
-        useLocator = Boolean.valueOf(args[1]);
+        serverPort = Integer.valueOf(args[1]);
       }
-      boolean serverOnly = false;
       if (args.length > 2) {
-        serverOnly = Boolean.valueOf(args[2]);
+        useLocator = Boolean.valueOf(args[2]);
       }
-      registerDataSerializables();
-      prog.createCache(serverPort);
+      
+      if (instanceType == CLIENT)
+      {
+        prog.createClientCache(serverPort);
+      } else {
+        registerDataSerializables();
+        prog.createCache(serverPort);
 
-      // note: we have to create lucene index before the region
-      prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);
-
-      if (!serverOnly) {
+        // note: we have to create lucene index before the region
+        prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);        
+      }
+      
+      if (instanceType == SERVER_WITH_FEEDER) {
         prog.feed(ENTRY_COUNT);
         prog.waitUntilFlushed("personIndex", "Person");
         prog.waitUntilFlushed("customerIndex", "Customer");
-
-        // now let's do search on lucene index
-        prog.queryByStringQueryParser("personIndex", "Person", "name:Tom9*");
-        prog.queryByStringQueryParser("personIndex", "Person", "streetAddress:21*");
-        prog.queryByStringQueryParser("customerIndex", "Customer", "name:Tom123");
-
-        prog.queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
-        prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO *]");
-        prog.queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO 223]");
-
-        System.out.println();
-        System.out.println();
-        prog.queryByIntRange("customerIndex", "Customer", "SSN", 456, Integer.MAX_VALUE);
-        prog.queryByInRange1("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD, 123, 123);
-        prog.queryByInRange2("personIndex", "Person", "revenue", 3000, 5000);
-
-        //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123000.0 TO 123000.0]");
-        //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":1230*");
-        //    prog.doSearch("pageIndex", "Page", "id:10");
-
-        //      prog.feedAndDoSpecialSearch("analyzerIndex", "Person");
       }
 
-      prog.doDump("personIndex", "Person");
-      prog.doDump("customerIndex", "Customer");
-      prog.doDump("analyzerIndex", "Person");
+      if (instanceType != SERVER_ONLY) {
+        // now let's do search on lucene index
+        prog.doQuery();
+      }
+      
+      if (instanceType == SERVER_WITH_FEEDER) {
+        prog.doDump("personIndex", "Person");
+        prog.doDump("customerIndex", "Customer");
+        prog.doDump("analyzerIndex", "Person");
+        System.out.println("Dumpped index");
+      }
 
       System.out.println("Press any key to exit");
       int c = System.in.read();
+
     } finally {
       prog.stopServer();
     }
   }
 
+  private void createClientCache(int port) {
+    ClientCacheFactory cf = new ClientCacheFactory().addPoolLocator("localhost", 12345);
+    cache = cf.setPdxReadSerialized(true).create();
+    ClientRegionFactory crf = ((ClientCache)cache).createClientRegionFactory(ClientRegionShortcut.CACHING_PROXY);
+    PersonRegion = crf.create("Person");
+    CustomerRegion = crf.create("Customer");
+    PageRegion = crf.create("Page");
+    
+    service = (LuceneServiceImpl) LuceneServiceProvider.get(cache);
+  }
+  
   private void createCache(int port) {
     if (cache != null) {
       return;
@@ -134,14 +153,17 @@ public class Main {
         .set("enable-time-statistics","true")
         .set("statistic-sample-rate","1000")
         .set("statistic-sampling-enabled", "true")
-        .set("statistic-archive-file", "server1.gfs")
-        .set("start-dev-rest-api", "true")
-        .set("http-service-port","8080")
-        .set("http-service-bind-address", "localhost")
+        .set("statistic-archive-file", "server1.gfs");
+    //        .set("log-level", "debug")
+    ;
+
+    if (instanceType != CLIENT) {
+      builder.set("start-dev-rest-api", "true")
+      .set("http-service-port","808"+instanceType)
+      .set("http-service-bind-address", "localhost");
+    }
         
-        //        .set("log-level", "debug")
-        ;
-    if (useLocator) {
+    if (useLocator && instanceType != CLIENT) {
       builder.set("locators", "localhost[12345]");
     }
     serverLauncher  = builder.build();
@@ -178,18 +200,39 @@ public class Main {
     service.createIndex("personIndex", "Person", "name", "email", "address", "streetAddress", "revenue");
     // PersonRegion = cache.createRegionFactory(shortcut).create("Person");
     cache.createDiskStoreFactory().create("data");
-    PersonRegion = cache.createRegionFactory()
+    PersonRegion = ((Cache)cache).createRegionFactory()
         .setDiskStoreName("data")
         //.setDataPolicy(DataPolicy.PARTITION).create("Person");
         .setDataPolicy(DataPolicy.PERSISTENT_PARTITION).create("Person");
 
     service.createIndex("customerIndex", "Customer", "symbol", "revenue", "SSN", "name", "email", "address", LuceneService.REGION_VALUE_FIELD);
-    CustomerRegion = cache.createRegionFactory(shortcut).create("Customer");
+    CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
 
     service.createIndex("pageIndex", "Page", "symbol", /*"revenue",*/ "name", "email", "address");
-    PageRegion = cache.createRegionFactory(shortcut).create("Page");
+    PageRegion = ((Cache)cache).createRegionFactory(shortcut).create("Page");
   }
 
+  public void doQuery() throws LuceneQueryException {
+    queryByStringQueryParser("personIndex", "Person", "name:Tom9*");
+    queryByStringQueryParser("personIndex", "Person", "streetAddress:21*");
+    queryByStringQueryParser("customerIndex", "Customer", "name:Tom123");
+
+    queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
+    queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO *]");
+    queryByStringQueryParser("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123 TO 223]");
+
+    System.out.println();
+    queryByIntRange("customerIndex", "Customer", "SSN", 456, Integer.MAX_VALUE);
+    queryByInRange1("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD, 123, 123);
+    queryByInRange2("personIndex", "Person", "revenue", 3000, 5000);
+
+    //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":[123000.0 TO 123000.0]");
+    //  prog.queryByInRange("customerIndex", "Customer", LuceneService.REGION_VALUE_FIELD+":1230*");
+    //  prog.doSearch("pageIndex", "Page", "id:10");
+
+    //  prog.feedAndDoSpecialSearch("analyzerIndex", "Person");    
+  }
+  
   // for test purpose
   private void waitUntilFlushed(String indexName, String regionName) {
     LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex(indexName, regionName);
@@ -211,7 +254,7 @@ public class Main {
   }
 
   private Region createRegion(String regionName, RegionShortcut regionType) {
-    RegionFactory<Object, Object> regionFactory = cache.createRegionFactory(regionType);
+    RegionFactory<Object, Object> regionFactory = ((Cache)cache).createRegionFactory(regionType);
     return regionFactory.create(regionName);
   }
 

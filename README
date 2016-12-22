@@ -1,22 +1,32 @@
+git clone git@github.com:gesterzhou/lucene_example.git
+
 Note: 
-REST URL:  http://localhost:8080/gemfire-api/docs/index.html
+REST URL:  http://localhost:8081/gemfire-api/docs/index.html
 
+step 0: run a standalone test
+-----------------------------
+cd ./git3/lucene_example
+./gradlew run
+
+Step 1: start locator if needed
+-------------------------------
 export GEMIFRE=/Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode
-
 cd $GEMFIRE
 bin/gfsh
 
-start locator --name=locator1 --port=12345 --classpath=/Users/gzhou/git3/lucene_example/build/libs/lucene_example-0.0.1.jar
+start locator --name=locator1 --port=12345
 
-export APPDIR=/Users/gzhou/git/lucene_example
-cd $APPDIR
-export GEMFIRE=/Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode
-#Note: export GEODE_HOME=C:/cygwin64/home/zhouxh/git6/gemfire/open/geode-assembly/build/install/apache-geode
-./gradlew run -PappArgs="['50505', 'true']"
+Step 2: start server only member
+cd ~/git3/serveronly/lucene_example
+./gradlew run -PappArgs="[2, 50506, true]"
 
-if needs to run another instance,
-cd $APPDIR2
-./gradlew run -PappArgs="['50506', 'true']"
+step 3: start server with feeder
+cd ~/git3/lucene_example
+./gradlew run -PappArgs="[1, 50505, true]"
+
+step 4: start a client
+cd ~/git3/client/lucene_example
+./gradlew run -PappArgs="[3]"
 
 ====================
 # show index definition including analyzers
@@ -88,8 +98,6 @@ testIndex  | /testRegion | [__REGION_VALUE_FIELD] | {}             | Initialized
 
 
 ========================
-gfsh>put --key=1 --value=value1
-Parameter "region" is required. Use "help <command name>" for assistance.
 gfsh>put --key=1 --value=value1 --region=testRegion
 Result      : true
 Key Class   : java.lang.String
@@ -138,16 +146,18 @@ gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --que
 
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom36* OR Tom422"
 
-# query using keyword analyzer 
+# query using keyword analyzer, personIndex uses KeywordAnalyzer for field "name"
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom42* OR email:t*490@example.com"
 Note: it will NOT show key490
 
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom42* OR email:t*490 example.com"
 Note: it will show key490
 
+# analyzerIndex is using standard analyzer for field "name"
 gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=name --queryStrings="Tom42* OR email:t*490@example.com"
 Note: it will show key490
 
+# query json object
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom*JSON"
   key    |                                                                   value                                                                    | score
 -------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -----
