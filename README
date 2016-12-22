@@ -1,3 +1,26 @@
+Overview
+--------
+This example try to show as many features of gemfire lucene
+in a light-weight application. 
+
+Following gemfire lucene features are tested:
+- create an application using gemfire lucene from scratch.
+- create lucene index from scratch, with or without analyzer
+- create user objects, primitive values(both string and integer), and json objects, put them into gemfire cache and indexed them
+- Query using normal StringQueryParser, which is the main weapon. Lucene syntax is supported.
+- Demonstate the different query results using analyzers, included a home-baked analyzer
+- Demonstate query on primitive value and json object. 
+- Demonstate an example of using QueryProvider to create my own lucene query object. This feature is for advanced lucene users. In this example, it's a Range Query for integer value. The demo provided 3 different way to use QueryProvider. 
+- start a REST server to show the contents
+- REST API to do lucene search (TBD)
+- soundex query (TBD)
+
+It can be run standalone, or in a cluster contains server 
+with feeder, server only, client. Both server with feeder 
+and client will do the same lucene queries.
+
+The feeding can be done by client too, but testing feed-from-client is not the objective, query-from-client is.
+
 git clone git@github.com:gesterzhou/lucene_example.git
 
 Note: 
