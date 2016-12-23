@@ -30,34 +30,55 @@ REST URL:
 ---------
 http://localhost:8081/gemfire-api/docs/index.html
 
-step 0: run a standalone test
------------------------------
-cd ./git3/lucene_example
-./gradlew run
+#step 0: run a standalone test
+#-----------------------------
+#cd ./git3/lucene_example
+#./gradlew run
 
-Step 1: start locator if needed
--------------------------------
+Step 1: start locator, create server
+------------------------------------
 export GEMIFRE=/Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode
 cd $GEMFIRE
 bin/gfsh
 
 start locator --name=locator1 --port=12345
 
-Step 2: start server only member
-cd ~/git3/serveronly/lucene_example
-./gradlew run -PappArgs="[2, 50506, true]"
+Step 2: create lucene index from scratch
+gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD
+                 Member                  | Status
+---------------------------------------- | ---------------------------------
+192.168.1.42(server1:26351)<ec><v1>:1025 | Successfully created lucene index
 
-step 3: start server with feeder
+gfsh>list lucene indexes --with-stats
+
+step 2: start server with feeder
 cd ~/git3/lucene_example
 ./gradlew run -PappArgs="[1, 50505, true]"
+
+step 3: recover from disk
+start server only member
+cd ~/git3/lucene_example
+./gradlew run -PappArgs="[2, 50506, true]"
+It will recover from disk for both data and index.
+
+run gfsh command to confirm the data and index are
+all recovered:
+
+gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=email --queryStrings="email:tzhou490@example.com"
+ key   |                                                         value                                                          | score
+------ | ---------------------------------------------------------------------------------------------------------------------- | -------
+key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 Lindon St, Portland_OR_97490', revenue='490000'} | 1.89712
 
 step 4: start a client
 cd ~/git3/client/lucene_example
 ./gradlew run -PappArgs="[3]"
 
-====================
-# show index definition including analyzers
-# show index usage in stats
+It can do the same queries as in step 2 with same results.
+
+step 5: create an index from scratch
+
+step 5: show index definition including analyzers and how index usage in stats
+
 gfsh>list lucene indexes --with-stats
  Index Name   | Region Path | Index.. |                    Field Analyzer                    |   Status    | Query Executions | Updates | Commits | Documents
 ------------- | ----------- | ------- | ---------------------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
@@ -82,11 +103,6 @@ gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_V
                  Member                  | Status
 ---------------------------------------- | ---------------------------------
 192.168.1.42(server1:26351)<ec><v1>:1025 | Successfully created lucene index
-
-gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD
-                 Member                  | Status
----------------------------------------- | ---------------------------------------------
-192.168.1.42(server1:26351)<ec><v1>:1025 | Failed: Lucene index already exists in region
 
 gfsh>list lucene indexes --with-stats
  Index Name   | Region Path | Index.. |                    Field Analyzer                    |   Status    | Query Executions | Updates | Commits | Documents

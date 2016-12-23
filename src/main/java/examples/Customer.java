@@ -3,6 +3,7 @@ package examples;
 import java.io.Serializable;
 
 public class Customer implements Serializable {
+  private String name;
   private String symbol; // search integer in string format
   private int revenue;
   private int SSN; // search int
@@ -10,7 +11,8 @@ public class Customer implements Serializable {
 
   public Customer() {}
 
-  public Customer(String symbol, int revenue, int ssn, Person contact) {
+  public Customer(String name, String symbol, int revenue, int ssn, Person contact) {
+    this.name = name;
     this.symbol = symbol;
     this.revenue = revenue;
     this.SSN = ssn;
@@ -18,12 +20,17 @@ public class Customer implements Serializable {
   }
 
   public Customer(int idx) {
+    this.name = Person.createName(idx);
     this.symbol = ""+idx;
     this.revenue = 1000 * idx;
     this.SSN = idx;
-    this.contact = new Person(idx, "Customer");
+    this.contact = new Person(idx);
   }
 
+  public String getName() {
+    return name;
+  }
+  
   public String getSymbol() {
     return symbol;
   }
@@ -43,6 +50,7 @@ public class Customer implements Serializable {
   @Override
   public String toString() {
     final StringBuffer sb = new StringBuffer("Customer{");
+    sb.append("name='").append(name).append('\'');
     sb.append("symbol='").append(symbol).append('\'');
     sb.append(", revenue=").append(revenue);
     sb.append(", SSN=").append(SSN);
