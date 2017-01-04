@@ -16,8 +16,8 @@ mainClassName = "examples.Main"
 
 // ./gradlew run -PappArgs="['a','shd','123']"
 run.doFirst { 
-  // environment 'GEMFIRE', '/Users/gzhou/git3/geode_release/apache-geode-1.0.0-incubating/'
-  environment 'GEMFIRE', '/Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode'
+  environment 'GEMFIRE', '/Users/gzhou/git3/geode_release/apache-geode-1.0.0-incubating/'
+  // environment 'GEMFIRE', '/Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode'
   environment 'GEODE_HOME', '/Users/gzhou/git3/gemfire/open/geode-assembly/build/install/apache-geode'
 }
 
@@ -41,14 +41,14 @@ repositories {
 // In this section you declare the dependencies for your production and test code
 dependencies {
     // If using release verson in maven (9.0.0)
-    // compile "org.apache.geode:geode-common:1.0.0-incubating"
-    // compile "org.apache.geode:geode-core:1.0.0-incubating"
-    // compile "org.apache.geode:geode-lucene:1.0.0-incubating"
+    compile "org.apache.geode:geode-common:1.0.0-incubating"
+    compile "org.apache.geode:geode-core:1.0.0-incubating"
+    compile "org.apache.geode:geode-lucene:1.0.0-incubating"
 
     // If using support version (9.0.1)
-    compile "org.apache.geode:geode-common:1.1.0-incubating-SNAPSHOT"
-    compile "org.apache.geode:geode-core:1.1.0-incubating-SNAPSHOT"
-    compile "org.apache.geode:geode-lucene:1.1.0-incubating-SNAPSHOT"
+    // compile "org.apache.geode:geode-common:1.1.0-incubating-SNAPSHOT"
+    // compile "org.apache.geode:geode-core:1.1.0-incubating-SNAPSHOT"
+    // compile "org.apache.geode:geode-lucene:1.1.0-incubating-SNAPSHOT"
 
     // If using develop version (9.1) 
     // compile "org.apache.geode:geode-common:1.1.0-SNAPSHOT"
