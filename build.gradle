@@ -16,7 +16,9 @@ mainClassName = "examples.Main"
 
 // ./gradlew run -PappArgs="['a','shd','123']"
 run.doFirst { 
+  // environment 'GEMFIRE', '/Users/gzhou/git3/geode_release/apache-geode-1.0.0-incubating/'
   environment 'GEMFIRE', '/Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode'
+  environment 'GEODE_HOME', '/Users/gzhou/git3/gemfire/open/geode-assembly/build/install/apache-geode'
 }
 
 run {
@@ -38,16 +40,22 @@ repositories {
 
 // In this section you declare the dependencies for your production and test code
 dependencies {
-    // compile "org.apache.geode:geode-common:1.1.0-SNAPSHOT"
-    // compile "org.apache.geode:geode-core:1.1.0-SNAPSHOT"
-    // compile "org.apache.geode:geode-lucene:1.1.0-SNAPSHOT"
-    // compile "org.apache.geode:geode-web-api:1.1.0-SNAPSHOT"
+    // If using release verson in maven (9.0.0)
+    // compile "org.apache.geode:geode-common:1.0.0-incubating"
+    // compile "org.apache.geode:geode-core:1.0.0-incubating"
+    // compile "org.apache.geode:geode-lucene:1.0.0-incubating"
 
+    // If using support version (9.0.1)
     compile "org.apache.geode:geode-common:1.1.0-incubating-SNAPSHOT"
     compile "org.apache.geode:geode-core:1.1.0-incubating-SNAPSHOT"
     compile "org.apache.geode:geode-lucene:1.1.0-incubating-SNAPSHOT"
-    compile "org.apache.geode:geode-web-api:1.1.0-incubating-SNAPSHOT"
 
+    // If using develop version (9.1) 
+    // compile "org.apache.geode:geode-common:1.1.0-SNAPSHOT"
+    // compile "org.apache.geode:geode-core:1.1.0-SNAPSHOT"
+    // compile "org.apache.geode:geode-lucene:1.1.0-SNAPSHOT"
+
+    // third party 
     compile "org.springframework.shell:spring-shell:1.1.0.RELEASE"
     compile "org.springframework:spring-core:4.2.4.RELEASE"
     compile "org.slf4j:slf4j-log4j12:1.7.21"
@@ -59,16 +67,6 @@ dependencies {
     compile "org.eclipse.jetty:jetty-security:9.3.6.v20151106"
     compile "org.eclipse.jetty:jetty-xml:9.3.6.v20151106"
     compile "org.eclipse.jetty:jetty-servlet:9.3.6.v20151106"
-
-    // compile files("../../git6/gemfire/open/geode-assembly/build/install/apache-geode/lib/geode-common-9.0.0-SNAPSHOT.jar")
-    // compile files("../../git6/gemfire/open/geode-assembly/build/install/apache-geode/lib/geode-core-9.0.0-SNAPSHOT.jar")
-    // compile files("../../git6/gemfire/open/geode-assembly/build/install/apache-geode/lib/geode-lucene-9.0.0-SNAPSHOT.jar")
-    // compile files("../../git6/gemfire/open/geode-assembly/build/install/apache-geode/lib/geode-dependencies.jar")
-
-
-    // compile "com.jayway.awaitility:awaitility:1.4.0"
-
-    // The production code uses the SLF4J logging API at compile time
 
     // Declare the dependency for your favourite test framework you want to use in your tests.
     // TestNG is also supported by the Gradle Test task. Just change the

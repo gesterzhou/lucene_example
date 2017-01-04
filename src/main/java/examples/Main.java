@@ -63,6 +63,7 @@ public class Main {
   final static int SERVER_WITH_FEEDER = 1;
   final static int SERVER_ONLY = 2;
   final static int CLIENT = 3;
+  final static int SERVER_WITH_CLUSTER_CONFIG = 4;
   static int instanceType = SERVER_WITH_FEEDER;
   
   /* Usage: ~ [1|2|3 [serverPort [isUsingLocator]]]
@@ -83,33 +84,56 @@ public class Main {
         instanceType = Integer.valueOf(args[0]);
       }
       if (args.length > 1) {
-        serverPort = Integer.valueOf(args[1]);
+        useLocator = Boolean.valueOf(args[1]);
       }
-      if (args.length > 2) {
-        useLocator = Boolean.valueOf(args[2]);
-      }
+      serverPort += instanceType;
       
-      if (instanceType == CLIENT)
-      {
-        prog.createClientCache(serverPort);
-      } else {
-        prog.createCache(serverPort);
+      switch (instanceType) {
+        case CLIENT:
+          // create client cache and proxy regions
+          // do query
+          prog.createClientCache();
+          //        prog.feed(ENTRY_COUNT);
+          prog.doQuery();
+          break;
 
-        // note: we have to create lucene index before the region
-        prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);        
-      }
+        case SERVER_WITH_CLUSTER_CONFIG:
+          // create cache without region
+          // do feed
+          // do query
+          prog.createCache(serverPort);
+          prog.getRegions();
+
+          prog.feed(ENTRY_COUNT);
+          prog.waitUntilFlushed("personIndex", "Person");
+          prog.waitUntilFlushed("analyzerIndex", "Person");
+          prog.waitUntilFlushed("customerIndex", "Customer");
+          prog.waitUntilFlushed("pageIndex", "Page");
+
+          prog.doQuery();
+          break;
+
+        case SERVER_WITH_FEEDER:
+          // create cache, create index, create region
+          // do feed
+          // do query
+          prog.createCache(serverPort);
+          prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);        
+
+          prog.feed(ENTRY_COUNT);
+          prog.waitUntilFlushed("personIndex", "Person");
+          prog.waitUntilFlushed("analyzerIndex", "Person");
+          prog.waitUntilFlushed("customerIndex", "Customer");
+          prog.waitUntilFlushed("pageIndex", "Page");
+          
+          prog.doQuery();
+          break;
       
-      if (instanceType == SERVER_WITH_FEEDER) {
-        prog.feed(ENTRY_COUNT);
-        prog.waitUntilFlushed("personIndex", "Person");
-        prog.waitUntilFlushed("analyzerIndex", "Person");
-        prog.waitUntilFlushed("customerIndex", "Customer");
-        prog.waitUntilFlushed("pageIndex", "Page");
-      }
-
-      if (instanceType != SERVER_ONLY) {
-        // now let's do search on lucene index
-        prog.doQuery();
+        case SERVER_ONLY:
+          // create cache, create index, create region
+          prog.createCache(serverPort);
+          prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);
+          break;
       }
       
       System.out.println("Press any key to exit");
@@ -120,7 +144,7 @@ public class Main {
     }
   }
 
-  private void createClientCache(int port) {
+  private void createClientCache() {
     ClientCacheFactory cf = new ClientCacheFactory().addPoolLocator("localhost", 12345);
     cache = cf.setPdxReadSerialized(true).create();
     ClientRegionFactory crf = ((ClientCache)cache).createClientRegionFactory(ClientRegionShortcut.CACHING_PROXY);
@@ -167,6 +191,12 @@ public class Main {
     service = (LuceneServiceImpl) LuceneServiceProvider.get(cache);
   }
 
+  private void getRegions() {
+    PersonRegion = cache.getRegion("/Person");
+    CustomerRegion = cache.getRegion("/Customer");
+    PageRegion = cache.getRegion("/Page");
+  }
+  
   private void stopServer() {
     if (serverLauncher != null) {
       serverLauncher.stop();
@@ -185,7 +215,7 @@ public class Main {
     // LuceneServiceImpl.luceneIndexFactory = new LuceneRawIndexFactory();
     //    LuceneIndexForPartitionedRegion.partitionedRepositoryManagerFactory = new RawLuceneRepositoryManagerFactory();
 
-    service.createIndex("personIndex", "Person", "name", "email", "address", "streetAddress", "revenue");
+    service.createIndex("personIndex", "Person", "name", "email", "address", "revenue");
     // PersonRegion = cache.createRegionFactory(shortcut).create("Person");
     cache.createDiskStoreFactory().create("data");
     PersonRegion = ((Cache)cache).createRegionFactory()
@@ -203,6 +233,12 @@ public class Main {
   public void doQuery() throws LuceneQueryException {
     System.out.println("Regular query on standard analyzer:");
     queryByStringQueryParser("personIndex", "Person", "name:Tom99*");
+    
+    System.out.println("\nUse customized analyzer to tokenize by '_'");
+    queryByStringQueryParser("analyzerIndex", "Person", "address:97763");
+    System.out.println("\nCompare with standard analyzer");
+    queryByStringQueryParser("personIndex", "Person", "address:97763");
+
     System.out.println("\nsearch region customer for symbol 123 and 456");
     queryByStringQueryParser("customerIndex", "Customer", "symbol:123");
     queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
@@ -216,6 +252,10 @@ public class Main {
   
   private void waitUntilFlushed(String indexName, String regionName) {
     LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex(indexName, regionName);
+    if (index == null) {
+      // it's a client
+      return;
+    }
     boolean status = false;
     long then = System.currentTimeMillis();
     do {
@@ -395,19 +435,19 @@ public class Main {
     }
   }
 
-  private static class MyCharacterTokenizer extends CharTokenizer {
-    @Override
-    protected boolean isTokenChar(final int character) {
-      return '_' != character;
-    }
-  }
-
-  private static class MyCharacterAnalyzer extends Analyzer {
-    @Override
-    protected TokenStreamComponents createComponents(final String field) {
-      Tokenizer tokenizer = new MyCharacterTokenizer();
-      TokenStream filter = new LowerCaseFilter(tokenizer);
-      return new TokenStreamComponents(tokenizer, filter);
-    }
-  }
+//  private static class MyCharacterTokenizer extends CharTokenizer {
+//    @Override
+//    protected boolean isTokenChar(final int character) {
+//      return '_' != character;
+//    }
+//  }
+//
+//  private static class MyCharacterAnalyzer extends Analyzer {
+//    @Override
+//    protected TokenStreamComponents createComponents(final String field) {
+//      Tokenizer tokenizer = new MyCharacterTokenizer();
+//      TokenStream filter = new LowerCaseFilter(tokenizer);
+//      return new TokenStreamComponents(tokenizer, filter);
+//    }
+//  }
 }

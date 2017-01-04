@@ -1,11 +1,12 @@
 Overview
---------
+========
 This example try to show as many features of gemfire lucene
 in a light-weight application. 
 
 Following gemfire lucene features are tested:
 - create an application using gemfire lucene from scratch.
 - create lucene index from scratch, with or without analyzer
+- create lucene index into cluster configuration and then used by other members
 - create user objects, primitive values(both string and integer), and json objects, put them into gemfire cache and indexed them
 - Query using normal StringQueryParser, which is the main weapon. Lucene syntax is supported.
 - Demonstate the different query results using analyzers, included a home-baked analyzer
@@ -13,8 +14,8 @@ Following gemfire lucene features are tested:
 - Demonstate an example of using QueryProvider to create my own lucene query object. This feature is for advanced lucene users. In this example, it's a Range Query for integer value. The demo provided 3 different way to use QueryProvider. 
 - start a REST server to show the contents
 - REST API to do lucene search (TBD)
+- From a client (or native client) to run lucene query through calling a function execution
 - soundex query (TBD)
-- dump the index from region into pure lucene file format to be viewed by 3rd party tool such as luke.
 
 It can be run standalone, or in a cluster contains server 
 with feeder, server only, client. Both server with feeder 
@@ -22,125 +23,59 @@ and client will do the same lucene queries.
 
 The feeding can be done by client too, but testing feed-from-client is not the objective, query-from-client is.
 
-Where is the source code:
-------------------------
+Source code can be got from: 
 git clone git@github.com:gesterzhou/lucene_example.git
 
-REST URL:  
----------
+REST URL is:
 http://localhost:8081/gemfire-api/docs/index.html
 
-#step 0: run a standalone test
-#-----------------------------
-#cd ./git3/lucene_example
-#./gradlew run
+The simplest way to run is run a standalone test:
+cd ./git3/lucene_example
+./gradlew run
+
+Part-0: preparation
+download geode 1.0.0 from http://geode.apache.org/releases/
+Unzip it to /Users/gzhou/git3/geode_release/apache-geode-1.0.0-incubating
+
+Part-1: create lucene index from scratch in gfsh
+================================================
 
 Step 1: start locator, create server
 ------------------------------------
-export GEMIFRE=/Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode
+export GEMIFRE=/Users/gzhou/git3/geode_release/apache-geode-1.0.0-incubating
 cd $GEMFIRE
 bin/gfsh
 
-start locator --name=locator1 --port=12345
+gfsh>start locator --name=locator1 --port=12345
 
-Step 2: create lucene index from scratch
+Step 2: start cache server
+--------------------------
+gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost
+
+Step 3: create lucene index from scratch
+----------------------------------------
 gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD
                  Member                  | Status
 ---------------------------------------- | ---------------------------------
-192.168.1.42(server1:26351)<ec><v1>:1025 | Successfully created lucene index
+192.168.1.23(server50505:17200)<v1>:1025 | Successfully created lucene index
 
 gfsh>list lucene indexes --with-stats
+Index Name | Region Path |     Indexed Fields     | Field Analy.. | Status  | Query Executions | Updates | Commits | Documents
+---------- | ----------- | ---------------------- | ------------- | ------- | ---------------- | ------- | ------- | ---------
+testIndex  | /testRegion | [__REGION_VALUE_FIELD] | {__REGION_V.. | Defined | NA               | NA      | NA      | NA
 
-step 2: start server with feeder
-cd ~/git3/lucene_example
-./gradlew run -PappArgs="[1, 50505, true]"
-
-step 3: recover from disk
-start server only member
-cd ~/git3/lucene_example
-./gradlew run -PappArgs="[2, 50506, true]"
-It will recover from disk for both data and index.
-
-run gfsh command to confirm the data and index are
-all recovered:
-
-gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=email --queryStrings="email:tzhou490@example.com"
- key   |                                                         value                                                          | score
------- | ---------------------------------------------------------------------------------------------------------------------- | -------
-key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 Lindon St, Portland_OR_97490', revenue='490000'} | 1.89712
-
-step 4: start a client
-cd ~/git3/client/lucene_example
-./gradlew run -PappArgs="[3]"
-
-It can do the same queries as in step 2 with same results.
-
-step 5: create an index from scratch
-
-step 5: show index definition including analyzers and how index usage in stats
-
-gfsh>list lucene indexes --with-stats
- Index Name   | Region Path | Index.. |                    Field Analyzer                    |   Status    | Query Executions | Updates | Commits | Documents
-------------- | ----------- | ------- | ---------------------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
-analyzerIndex | /Person     | [addr.. | {address=MyCharacterAnalyzer, email=KeywordAnalyzer} | Initialized | 1695             | 1008    | 962     | 1004
-customerIndex | /Customer   | [symb.. | {}                                                   | Initialized | 678              | 4       | 4       | 4
-pageIndex     | /Page       | [symb.. | {}                                                   | Initialized | 0                | 0       | 0       | 0
-personIndex   | /Person     | [name.. | {}                                                   | Initialized | 339              | 1008    | 962     | 1004
-
-
-gfsh>describe lucene index --name=personIndex --region=/Person
-Index Name  | Region Path |                 Indexed Fields                 | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
------------ | ----------- | ---------------------------------------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
-personIndex | /Person     | [name, email, address, streetAddress, revenue] | {}             | Initialized | 339              | 1008    | 962     | 1004
-
-gfsh>describe lucene index --name=analyzerIndex --region=/Person
- Index Name   | Region Path |     Indexed Fields     |            Field Analyzer             |   Status    | Query Executions | Updates | Commits | Documents
-------------- | ----------- | ---------------------- | ------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
-analyzerIndex | /Person     | [address, name, email] | {address=MyCharacterAnalyzer, email.. | Initialized | 1695             | 1008    | 962     | 1004
-
-=======================
-gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD
-                 Member                  | Status
----------------------------------------- | ---------------------------------
-192.168.1.42(server1:26351)<ec><v1>:1025 | Successfully created lucene index
-
-gfsh>list lucene indexes --with-stats
- Index Name   | Region Path | Index.. |                    Field Analyzer                    |   Status    | Query Executions | Updates | Commits | Documents
-------------- | ----------- | ------- | ---------------------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
-analyzerIndex | /Person     | [addr.. | {address=MyCharacterAnalyzer, email=KeywordAnalyzer} | Initialized | 1695             | 1008    | 962     | 1004
-customerIndex | /Customer   | [symb.. | {}                                                   | Initialized | 678              | 4       | 4       | 4
-pageIndex     | /Page       | [symb.. | {}                                                   | Initialized | 0                | 0       | 0       | 0
-personIndex   | /Person     | [name.. | {}                                                   | Initialized | 339              | 1008    | 962     | 1004
-testIndex     | /testRegion | [__RE.. | {}                                                   | Defined     | NA               | NA      | NA      | NA
-
-gfsh>create region --name=testRegion --total-num-buckets=10 --type=PARTITION
-=PARTITION                                 =PARTITION_REDUNDANT                       =PARTITION_PERSISTENT                      
-=PARTITION_REDUNDANT_PERSISTENT            =PARTITION_OVERFLOW                        =PARTITION_REDUNDANT_OVERFLOW              
-=PARTITION_PERSISTENT_OVERFLOW             =PARTITION_REDUNDANT_PERSISTENT_OVERFLOW   =PARTITION_HEAP_LRU                        
-=PARTITION_REDUNDANT_HEAP_LRU              =PARTITION_PROXY                           =PARTITION_PROXY_REDUNDANT                 
-gfsh>create region --name=testRegion --type=PARTITION
+gfsh>create region --name=testRegion --type=PARTITION_PERSISTENT
   Member    | Status
 ----------- | ---------------------------------------------
 server50505 | Region "/testRegion" created on "server50505"
 
 gfsh>list lucene indexes --with-stats
- Index Name   | Region Path |  Indexed Fields   | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
-------------- | ----------- | ----------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
-analyzerIndex | /Person     | [address, name,.. | {address=MyC.. | Initialized | 1695             | 1008    | 581     | 1004
-customerIndex | /Customer   | [symbol, revenu.. | {}             | Initialized | 678              | 4       | 4       | 4
-pageIndex     | /Page       | [symbol, name, .. | {}             | Initialized | 0                | 0       | 0       | 0
-personIndex   | /Person     | [name, email, a.. | {}             | Initialized | 339              | 1008    | 528     | 1004
-testIndex     | /testRegion | [__REGION_VALUE.. | {}             | Initialized | 0                | 0       | 0       | 0
+Index Name | Region Path |  Indexed Fields   | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
+---------- | ----------- | ----------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
+testIndex  | /testRegion | [__REGION_VALUE.. | {}             | Initialized | 0                | 0       | 0       | 0
 
-
-gfsh>describe lucene index --name=testIndex --region=/testRegion
-Index Name | Region Path |     Indexed Fields     | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
----------- | ----------- | ---------------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
-testIndex  | /testRegion | [__REGION_VALUE_FIELD] | {}             | Initialized | 0                | 0       | 0       | 0
-
-
-
-========================
+Step 4: put 3 entries and do query
+----------------------------------
 gfsh>put --key=1 --value=value1 --region=testRegion
 Result      : true
 Key Class   : java.lang.String
@@ -165,14 +100,6 @@ Value Class : java.lang.String
 Old Value   : <NULL>
 
 
-gfsh>search lucene --
- --name            --region          --queryStrings    --defaultField   
-gfsh>search lucene --name=tes --
- --region          --queryStrings    --defaultField   
-gfsh>search lucene --name=testIndex --
- --region          --queryStrings    --defaultField   
-gfsh>search lucene --name=testIndex --region=/
-=/Customer     =/Page         =/Person       =/testRegion   
 gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=value1 --defaultField=__REGION_VALUE_FIELD
 key | value  | score
 --- | ------ | ---------
@@ -181,9 +108,89 @@ key | value  | score
 gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=value* --defaultField=__REGION_VALUE_FIELD
 key | value  | score
 --- | ------ | -----
-1   | value1 | 1
 3   | value3 | 1
 2   | value2 | 1
+1   | value1 | 1
+
+Step 5: view the region in REST 
+-------------------------------
+http://localhost:8081/gemfire-api/docs/index.html
+
+Step 6: stop cache server
+-------------------------
+gfsh>stop server --name=server50505
+
+Optional:
+Step 7: start another server
+
+Part-2: A more complex example using gfsh cluster configuration
+===============================================================
+
+step 1: Start server in gfsh. Create index, region and save into cluster config
+------------------------------------------------------------------
+gfsh>start locator --name=locator1 --port=12345
+
+gfsh>configure pdx --disk-store=DEFAULT --read-serialized=true
+
+gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost
+
+gfsh>deploy --jar=/Users/gzhou/git3/lucene_example/build/libs/lucene_example-0.0.1.jar
+  Member    |       Deployed JAR       | Deployed JAR Location
+----------- | ------------------------ | -------------------------------------------------------------------------------------
+server50505 | lucene_example-0.0.1.jar | /Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode/ser..
+
+
+gfsh>create lucene index --name=analyzerIndex --region=/Person --field=name,email,address,revenue --analyzer=null,org.apache.lucene.analysis.core.KeywordAnalyzer,examples.MyCharacterAnalyzer,null
+
+gfsh>create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue
+
+gfsh>create lucene index --name=customerIndex --region=/Customer --field=symbol,revenue,SSN,name,email,address,__REGION_VALUE_FIELD
+
+gfsh>create lucene index --name=pageIndex --region=/Page --field=id,title,content
+
+gfsh>create region --name=Person --type=PARTITION_PERSISTENT
+gfsh>create region --name=Customer --type=PARTITION_PERSISTENT
+gfsh>create region --name=Page --type=PARTITION_PERSISTENT
+
+gfsh>list lucene indexes
+ Index Name   | Region Path |                           Indexed Fields                           | Field Analy.. | Status
+------------- | ----------- | ------------------------------------------------------------------ | ------------- | -----------
+analyzerIndex | /Person     | [revenue, address, name, email]                                    | {revenue=St.. | Initialized
+customerIndex | /Customer   | [symbol, revenue, SSN, name, email, address, __REGION_VALUE_FIELD] | {}            | Initialized
+pageIndex     | /Page       | [id, title, content]                                               | {}            | Initialized
+personIndex   | /Person     | [name, email, address, revenue]                                    | {}            | Initialized
+
+
+step 2: start server with feeder
+--------------------------------
+cd ~/git3/lucene_example
+./gradlew run -PappArgs="[4, true]"
+
+step 3: do some queries
+---------------------
+gfsh>list members
+   Name     | Id
+----------- | ------------------------------------------------
+locator1    | 192.168.1.3(locator1:32892:locator)<ec><v0>:1024
+server50505 | 192.168.1.3(server50505:32949)<v1>:1025
+server50509 | 192.168.1.3(server50509:33041)<v6>:1026
+
+#analyzerIndex used customized analyzer which will tokenize by '_'
+gfsh>search lucene --region=/Person --name=personIndex --defaultField=address --queryStrings="97763"
+No results
+
+gfsh>search lucene --region=/Person --name=analyzerIndex --defaultField=address --queryStrings="97763"
+ key   |                                                   value                                                   | score
+------ | --------------------------------------------------------------------------------------------------------- | ---------
+key763 | Person{name='Tom763 Zhou', email='tzhou763@example.com', address='763 Lindon St, Portland_OR_97763', re.. | 1.6694657
+
+# query json object
+gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom*JSON"
+  key    |                                                                   value                                                                    | score
+-------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -----
+jsondoc2 | PDX[3,__GEMFIRE_JSON]{address=PDX[1,__GEMFIRE_JSON]{city=New York, postalCode=10021, state=NY, streetAddress=21 2nd Street}, age=25, las.. | 1
+jsondoc1 | PDX[3,__GEMFIRE_JSON]{address=PDX[1,__GEMFIRE_JSON]{city=New York, postalCode=10021, state=NY, streetAddress=21 2nd Street}, age=25, las.. | 1
+
 
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings=Tom3* --limit=5
 
@@ -209,9 +216,57 @@ key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 L
 
 Note: found a lot due to search by "example.com", because personIndex is using standard analyzer for field "email".
 
-# query json object
-gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom*JSON"
-  key    |                                                                   value                                                                    | score
--------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -----
-jsondoc2 | PDX[3,__GEMFIRE_JSON]{address=PDX[1,__GEMFIRE_JSON]{city=New York, postalCode=10021, state=NY, streetAddress=21 2nd Street}, age=25, las.. | 1
-jsondoc1 | PDX[3,__GEMFIRE_JSON]{address=PDX[1,__GEMFIRE_JSON]{city=New York, postalCode=10021, state=NY, streetAddress=21 2nd Street}, age=25, las.. | 1
+
+step 4: query from client
+-------------------------
+cd /Users/gzhou/git3/client/lucene_example
+./gradlew run -PappArgs="[3]"
+
+step 5: view from REST URL
+--------------------------
+There're 2 REST web servers:
+http://localhost:8080/gemfire-api/docs/index.html by gfsh
+http://localhost:8084/gemfire-api/docs/index.html by API
+
+Part-3: recover from disk
+==========================
+step 1: start locator 
+---------------------
+gfsh>start locator --name=locator1 --port=12345
+
+step 2: start a server with feeder
+----------------------------------
+cd ~/git3/lucene_example
+./gradlew run -PappArgs="[1, true]"
+
+step 3: start server only member to recover from disk
+-----------------------------------------------------
+cd ~/git3/lucene_example
+./gradlew run -PappArgs="[2, true]"
+It will recover from disk for both data and index.
+
+run gfsh command to confirm the data and index are
+all recovered:
+
+gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=email --queryStrings="email:tzhou490@example.com"
+ key   |                                                         value                                                          | score
+------ | ---------------------------------------------------------------------------------------------------------------------- | -------
+key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 Lindon St, Portland_OR_97490', revenue='490000'} | 1.89712
+
+step 4: start a client
+cd ~/git3/client/lucene_example
+./gradlew run -PappArgs="[3]"
+
+
+step 5: show index definition including analyzers and how index usage in stats
+
+gfsh>describe lucene index --name=personIndex --region=/Person
+Index Name  | Region Path |                 Indexed Fields                 | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
+----------- | ----------- | ---------------------------------------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
+personIndex | /Person     | [name, email, address, streetAddress, revenue] | {}             | Initialized | 339              | 1008    | 962     | 1004
+
+gfsh>describe lucene index --name=analyzerIndex --region=/Person
+ Index Name   | Region Path |     Indexed Fields     |            Field Analyzer             |   Status    | Query Executions | Updates | Commits | Documents
+------------- | ----------- | ---------------------- | ------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
+analyzerIndex | /Person     | [address, name, email] | {address=MyCharacterAnalyzer, email.. | Initialized | 1695             | 1008    | 962     | 1004
+
