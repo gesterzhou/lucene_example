@@ -120,8 +120,7 @@ Step 6: stop cache server
 -------------------------
 gfsh>stop server --name=server50505
 
-Optional:
-Step 7: start another server
+Step 7: start the server again and recover from disk
 
 Part-2: A more complex example using gfsh cluster configuration
 ===============================================================
@@ -165,6 +164,7 @@ step 2: start server with feeder
 --------------------------------
 cd ~/git3/lucene_example
 ./gradlew run -PappArgs="[4, true]"
+Note: It will only create cache and get region and index definition from clusterconfiguration saved in locator.
 
 step 3: do some queries
 ---------------------
@@ -269,4 +269,39 @@ gfsh>describe lucene index --name=analyzerIndex --region=/Person
  Index Name   | Region Path |     Indexed Fields     |            Field Analyzer             |   Status    | Query Executions | Updates | Commits | Documents
 ------------- | ----------- | ---------------------- | ------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
 analyzerIndex | /Person     | [address, name, email] | {address=MyCharacterAnalyzer, email.. | Initialized | 1695             | 1008    | 962     | 1004
+
+Part-4: call function from client and REST
+==========================================
+step 1: start locator 
+---------------------
+gfsh>start locator --name=locator1 --port=12345
+
+step 2: start server with feeder
+--------------------------------
+cd ~/git3/lucene_example
+./gradlew run -PappArgs="[1, true]"
+
+step 3: run a client
+--------------------
+cd /Users/gzhou/git3/client/lucene_example
+./gradlew run -PappArgs="[3]"
+
+The client will call function "LuceneSearchIndexFunction" at server and display results at client.
+
+step 4: run query from REST
+---------------------------
+http://localhost:8081/gemfire-api/docs/index.html
+
+You can try pdx-based-crud-controller to view region
+contents and query-access-controller to do OQL query.
+
+Note: Following step should use my hacked version of geode-1.1.0
+click function-access-controller's POST
+type LuceneSearchIndexFunction into functionId field.
+type following paramter into argsInBody field one by one and click "Try it out!" button. 
+
+personIndex,Person,name:Tom99*,name,-1,false
+personIndex,Person,Tom*JSON,name,-1,false
+analyzerIndex,Person,address:97763,name,-1,false
+customerIndex,Customer,symbol:123,name,-1,false
 

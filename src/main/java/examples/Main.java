@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
@@ -29,6 +30,12 @@ import org.apache.geode.cache.client.ClientCache;
 import org.apache.geode.cache.client.ClientCacheFactory;
 import org.apache.geode.cache.client.ClientRegionFactory;
 import org.apache.geode.cache.client.ClientRegionShortcut;
+import org.apache.geode.cache.client.Pool;
+import org.apache.geode.cache.client.PoolManager;
+import org.apache.geode.cache.execute.Execution;
+import org.apache.geode.cache.execute.Function;
+import org.apache.geode.cache.execute.FunctionService;
+import org.apache.geode.cache.execute.ResultCollector;
 import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.cache.lucene.LuceneQuery;
 import org.apache.geode.cache.lucene.LuceneQueryException;
@@ -47,7 +54,6 @@ import org.apache.geode.pdx.JSONFormatter;
 import org.apache.geode.pdx.PdxInstance;
 
 public class Main {
-  // private final Version version = Version.LUCENE_5_3_0;
   ServerLauncher serverLauncher;
   GemFireCache cache;
   Region PersonRegion;
@@ -66,20 +72,15 @@ public class Main {
   final static int SERVER_WITH_CLUSTER_CONFIG = 4;
   static int instanceType = SERVER_WITH_FEEDER;
   
-  /* Usage: ~ [1|2|3 [serverPort [isUsingLocator]]]
+  /* Usage: ~ [1|2|3|4 [isUsingLocator]]
    * 1: server with feeder
    * 2: server only 
    * 3: client
+   * 4: server with feeder using cluster config
    */
   public static void main(final String[] args) throws LuceneQueryException, IOException, InterruptedException {
-//    System.out.println("There are "+args.length+" arguments.");
-//    for (int i=0; i<args.length; i++) {
-//      System.out.println("arg"+i+":"+args[i]);
-//    }
-
     Main prog = new Main();
     try {
-      //    System.setProperty("gemfire.NotUsing.RegionDirectory", "true");
       if (args.length > 0) {
         instanceType = Integer.valueOf(args[0]);
       }
@@ -93,8 +94,8 @@ public class Main {
           // create client cache and proxy regions
           // do query
           prog.createClientCache();
-          //        prog.feed(ENTRY_COUNT);
           prog.doQuery();
+          prog.doClientFunction();
           break;
 
         case SERVER_WITH_CLUSTER_CONFIG:
@@ -188,6 +189,11 @@ public class Main {
     System.out.println("Server started!");
 
     cache = CacheFactory.getAnyInstance();
+    FunctionService.registerFunction(new LuceneSearchIndexFunction());
+    final Map<String, Function> registeredFunctions = FunctionService.getRegisteredFunctions();
+    for (String s:registeredFunctions.keySet()) {
+      System.out.println("registered function:"+s);
+    }
     service = (LuceneServiceImpl) LuceneServiceProvider.get(cache);
   }
 
@@ -206,26 +212,22 @@ public class Main {
   }
 
   private void createIndexAndRegions(RegionShortcut shortcut) {
+    // create an index using several analyzers on region /Person
     Map<String, Analyzer> fields = new HashMap<String, Analyzer>();
     fields.put("name",  null);
     fields.put("email", new KeywordAnalyzer());
     fields.put("address", new MyCharacterAnalyzer());
     service.createIndex("analyzerIndex", "Person", fields);
 
-    // LuceneServiceImpl.luceneIndexFactory = new LuceneRawIndexFactory();
-    //    LuceneIndexForPartitionedRegion.partitionedRepositoryManagerFactory = new RawLuceneRepositoryManagerFactory();
-
+    // create an index using standard analyzer on region /Person
     service.createIndex("personIndex", "Person", "name", "email", "address", "revenue");
-    // PersonRegion = cache.createRegionFactory(shortcut).create("Person");
-    cache.createDiskStoreFactory().create("data");
-    PersonRegion = ((Cache)cache).createRegionFactory()
-        .setDiskStoreName("data")
-        //.setDataPolicy(DataPolicy.PARTITION).create("Person");
-        .setDataPolicy(DataPolicy.PERSISTENT_PARTITION).create("Person");
+    PersonRegion = ((Cache)cache).createRegionFactory(shortcut).create("Person");
 
+    // create an index using standard analyzer on region /Customer
     service.createIndex("customerIndex", "Customer", "symbol", "revenue", "SSN", "name", "email", "address", LuceneService.REGION_VALUE_FIELD);
     CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
 
+    // create an index using standard analyzer on region /Page
     service.createIndex("pageIndex", "Page", "id", "title", "content");
     PageRegion = ((Cache)cache).createRegionFactory(shortcut).create("Page");
   }
@@ -239,7 +241,7 @@ public class Main {
     System.out.println("\nCompare with standard analyzer");
     queryByStringQueryParser("personIndex", "Person", "address:97763");
 
-    System.out.println("\nsearch region customer for symbol 123 and 456");
+    System.out.println("\nsearch region Customer for symbol 123 and 456");
     queryByStringQueryParser("customerIndex", "Customer", "symbol:123");
     queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
     
@@ -248,6 +250,37 @@ public class Main {
     
     System.out.println("\nExamples of QueryProvider");
     queryByIntRange("customerIndex", "Customer", "SSN", 995, Integer.MAX_VALUE);
+  }
+  
+  public void doClientFunction() {
+    System.out.println("\nCalling function from a client");
+    Pool pool = PoolManager.createFactory().addLocator("localhost", 12345).create("clientPool");
+
+    LuceneQueryInfo queryInfo = new LuceneQueryInfo("personIndex", "Person", "name:Tom99*", "name", -1, false); 
+    Execution execution = FunctionService.onServer(pool).withArgs(queryInfo);
+    // Client code can call function via its name, it does not need to know function class object
+    ResultCollector<?,?> rc = execution.execute("LuceneSearchIndexFunction");
+    displayResults(rc);
+    
+    String parametersForREST = "personIndex,Person,name:Tom99*,name,-1,false";
+    execution = FunctionService.onServer(pool).withArgs(queryInfo);
+    rc = execution.execute("LuceneSearchIndexFunction");
+    displayResults(rc);
+    
+    queryInfo = new LuceneQueryInfo("analyzerIndex", "/Person", "address:97763", "name", -1, false);
+    execution = FunctionService.onServer(pool).withArgs(queryInfo);
+    rc = execution.execute("LuceneSearchIndexFunction");
+    displayResults(rc);
+  }
+  
+  private void displayResults(ResultCollector<?,?> rc) {
+    List<Set<LuceneSearchResults>> functionResults = (List<Set<LuceneSearchResults>>) rc.getResult();
+    List<LuceneSearchResults> results = functionResults.stream().flatMap(set -> set.stream()).sorted()
+        .collect(Collectors.toList());
+    System.out.println("\nClient Function found "+results.size()+" results");
+    for (LuceneSearchResults rst:results) {
+      System.out.println(rst);
+    }
   }
   
   private void waitUntilFlushed(String indexName, String regionName) {
@@ -262,11 +295,6 @@ public class Main {
       status = index.waitUntilFlushed(60000);
     } while (status == false);
     System.out.println("Total wait time is:"+(System.currentTimeMillis() - then));
-  }
-
-  public void doDump(String indexName, String regionName) {
-    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex(indexName, regionName);
-    index.dumpFiles("dump"+indexName);
   }
 
   private void defineIndexAndRegion(String indexName, String regionName, RegionShortcut regionType, String...fields) {
@@ -376,9 +404,13 @@ public class Main {
       System.out.println("Search found "+results.size()+" rows in "+regionName);
     }
 
+    int pageno = 0;
     if (results.size() < 20) {
     final AtomicInteger cnt = new AtomicInteger(0);
     while(results.hasNext()) {
+      if (query.getPageSize() != 0) {
+        System.out.println("Page:"+pageno+" starts here ------------");
+      }
       results.next().stream()
       .forEach(struct -> {
         Object value = struct.getValue();
@@ -391,13 +423,17 @@ public class Main {
         }
         cnt.incrementAndGet();
       });
+      if (query.getPageSize() != 0) {
+        System.out.println("Page:"+pageno+" ends here ------------");
+      }
+      pageno++;
     }
     }
   }
 
   private void queryByStringQueryParser(String indexName, String regionName, String queryString) throws LuceneQueryException {
     System.out.println("\nQuery string is:"+queryString);
-    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, queryString, "name");
+    LuceneQuery query = service.createLuceneQueryFactory().setPageSize(5).create(indexName, regionName, queryString, "name");
 
     getResults(query, regionName);
   }
@@ -410,44 +446,4 @@ public class Main {
     getResults(query, regionName);
   }
   
-  private void verifyQuery(String indexName, String regionName, String queryString, String... expectedKeys) throws LuceneQueryException {
-    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, queryString, "name");
-    if (query == null) {
-      return;
-    }
-
-    Set expectedKeySet = new HashSet<>(Arrays.asList(expectedKeys));
-    Set actualKeySet = new HashSet<>();
-    final PageableLuceneQueryResults<String, Object> results = query.findPages();
-    while(results.hasNext()) {
-      results.next().stream()
-      .forEach(struct -> { 
-        String key = (String)((LuceneResultStruct)struct).getKey(); 
-        //                  System.out.println("key="+key); 
-        actualKeySet.add(key); 
-      });
-    }
-
-    if (expectedKeySet.containsAll(actualKeySet) && actualKeySet.containsAll(expectedKeySet)) {
-      System.out.println(queryString + " expects "+expectedKeySet+ " -- OK");
-    } else {
-      System.out.println(queryString + " expects "+expectedKeySet+ " -- failed, actual is "+actualKeySet);
-    }
-  }
-
-//  private static class MyCharacterTokenizer extends CharTokenizer {
-//    @Override
-//    protected boolean isTokenChar(final int character) {
-//      return '_' != character;
-//    }
-//  }
-//
-//  private static class MyCharacterAnalyzer extends Analyzer {
-//    @Override
-//    protected TokenStreamComponents createComponents(final String field) {
-//      Tokenizer tokenizer = new MyCharacterTokenizer();
-//      TokenStream filter = new LowerCaseFilter(tokenizer);
-//      return new TokenStreamComponents(tokenizer, filter);
-//    }
-//  }
 }
