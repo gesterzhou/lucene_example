@@ -26,6 +26,17 @@ run {
 // In this section you declare where to find the dependencies of your project
 repositories {
     jcenter()
+    //Put your credentials in ~/.gradle/gradle.properties, eg
+    //
+    //pivotalUsername=your_username
+    //pivotalPassword=your_password
+    maven {
+      url 'https://commercial-repo.pivotal.io/data3/gemfire-release-repo/gemfire'
+      credentials {
+        username "$pivotalUsername"
+        password "$pivotalPassword"
+      }
+    }
 }
 
 // In this section you declare the dependencies for your production and test code
@@ -33,6 +44,11 @@ dependencies {
     // If using release verson in maven (geode 1.0.0)
     compile "org.apache.geode:geode-core:1.0.0-incubating"
     compile "org.apache.geode:geode-lucene:1.0.0-incubating"
+
+    //To use gemfire 9.0.1
+    //compile "io.pivotal.gemfire:geode-core:9.0.1"
+    //compile "io.pivotal.gemfire:geode-lucene:9.0.1"
+
     // third party 
     compile "org.springframework.shell:spring-shell:1.1.0.RELEASE"
     compile "org.springframework:spring-core:4.2.4.RELEASE"
