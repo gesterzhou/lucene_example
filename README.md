@@ -23,11 +23,9 @@ and client will do the same lucene queries.
 
 The feeding can be done by client too, but testing feed-from-client is not the objective, query-from-client is.
 
-Source code can be got from: 
-git clone git@github.com:gesterzhou/lucene_example.git
-
 REST URL is:
-http://localhost:8081/gemfire-api/docs/index.html
+http://localhost:8081/gemfire-api/docs/index.html (for feeder)
+http://localhost:8080/gemfire-api/docs/index.html (for server started by gfsh)
 
 The simplest way to run is run a standalone test:
 cd ./git3/lucene_example
@@ -38,6 +36,19 @@ download geode 1.0.0 from http://geode.apache.org/releases/
 Unzip it to $HOME/geode_release/apache-geode-1.0.0-incubating
 
 export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+
+Source code can be got from: 
+git clone git@github.com:gesterzhou/lucene_example.git
+cd lucene_example
+./gradlew build
+
+You might need 3 copies to run following members:
+- server with feeder (may or may not using cluster config)
+  location: $HOME/server/lucene_example
+- server only
+  location: $HOME/serveronly/lucene_example
+- client
+  location: $HOME/client/lucene_example
 
 Part-1: create lucene index from scratch in gfsh
 ================================================
@@ -85,7 +96,6 @@ Key         : 1
 Value Class : java.lang.String
 Old Value   : <NULL>
 
-
 gfsh>put --key=2 --value=value2 --region=testRegion
 Result      : true
 Key Class   : java.lang.String
@@ -93,14 +103,12 @@ Key         : 2
 Value Class : java.lang.String
 Old Value   : <NULL>
 
-
 gfsh>put --key=3 --value=value3 --region=testRegion
 Result      : true
 Key Class   : java.lang.String
 Key         : 3
 Value Class : java.lang.String
 Old Value   : <NULL>
-
 
 gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=value1 --defaultField=__REGION_VALUE_FIELD
 key | value  | score
@@ -116,13 +124,19 @@ key | value  | score
 
 Step 5: view the region in REST 
 -------------------------------
-http://localhost:8081/gemfire-api/docs/index.html
+http://localhost:8080/gemfire-api/docs/index.html
 
 Step 6: stop cache server
 -------------------------
 gfsh>stop server --name=server50505
 
 Step 7: start the server again and recover from disk
+----------------------------------------------------
+gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost
+
+Step 8: clean up
+----------------
+rm -rf locator1 server50505
 
 Part-2: A more complex example using gfsh cluster configuration
 ===============================================================
@@ -193,9 +207,10 @@ gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --que
 jsondoc2 | PDX[3,__GEMFIRE_JSON]{address=PDX[1,__GEMFIRE_JSON]{city=New York, postalCode=10021, state=NY, streetAddress=21 2nd Street}, age=25, las.. | 1
 jsondoc1 | PDX[3,__GEMFIRE_JSON]{address=PDX[1,__GEMFIRE_JSON]{city=New York, postalCode=10021, state=NY, streetAddress=21 2nd Street}, age=25, las.. | 1
 
-
+# query with limit
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings=Tom3* --limit=5
 
+# composite query condition
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom36* OR Tom422"
 
 # query using keyword analyzer, analyzerIndex uses KeywordAnalyzer for field "email"
@@ -230,6 +245,13 @@ There're 2 REST web servers:
 http://localhost:8080/gemfire-api/docs/index.html by gfsh
 http://localhost:8084/gemfire-api/docs/index.html by API
 
+step 6: clean up
+gfsh>stop server --name=server50505
+gfsh>stop locator --name=locator1
+
+on gfsh member, rm -rf locator1 server50505
+on server member, run ./clean.sh
+
 Part-3: recover from disk
 ==========================
 step 1: start locator 
@@ -247,8 +269,7 @@ cd ~/git3/lucene_example
 ./gradlew run -PappArgs="[2, true]"
 It will recover from disk for both data and index.
 
-run gfsh command to confirm the data and index are
-all recovered:
+run gfsh command to confirm the data and index are all recovered:
 
 gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=email --queryStrings="email:tzhou490@example.com"
  key   |                                                         value                                                          | score
@@ -258,7 +279,6 @@ key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 L
 step 4: start a client
 cd ~/git3/client/lucene_example
 ./gradlew run -PappArgs="[3]"
-
 
 step 5: show index definition including analyzers and how index usage in stats
 
@@ -271,6 +291,8 @@ gfsh>describe lucene index --name=analyzerIndex --region=/Person
  Index Name   | Region Path |     Indexed Fields     |            Field Analyzer             |   Status    | Query Executions | Updates | Commits | Documents
 ------------- | ----------- | ---------------------- | ------------------------------------- | ----------- | ---------------- | ------- | ------- | ---------
 analyzerIndex | /Person     | [address, name, email] | {address=MyCharacterAnalyzer, email.. | Initialized | 1695             | 1008    | 962     | 1004
+
+step 6: clean up
 
 Part-4: call function from client and REST
 ==========================================

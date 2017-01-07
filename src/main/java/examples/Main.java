@@ -234,22 +234,38 @@ public class Main {
 
   public void doQuery() throws LuceneQueryException {
     System.out.println("Regular query on standard analyzer:");
-    queryByStringQueryParser("personIndex", "Person", "name:Tom99*");
+    queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 5);
     
     System.out.println("\nUse customized analyzer to tokenize by '_'");
-    queryByStringQueryParser("analyzerIndex", "Person", "address:97763");
+    queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0);
     System.out.println("\nCompare with standard analyzer");
-    queryByStringQueryParser("personIndex", "Person", "address:97763");
+    queryByStringQueryParser("personIndex", "Person", "address:97763", 0);
+
+    System.out.println("\nQuery with composite condition");
+    queryByStringQueryParser("analyzerIndex", "Person", "name:Tom999* OR address:97763", 0);
 
     System.out.println("\nsearch region Customer for symbol 123 and 456");
-    queryByStringQueryParser("customerIndex", "Customer", "symbol:123");
-    queryByStringQueryParser("customerIndex", "Customer", "symbol:456");
+    queryByStringQueryParser("customerIndex", "Customer", "symbol:123", 0);
+    queryByStringQueryParser("customerIndex", "Customer", "symbol:456", 0);
     
-    queryByStringQueryParser("customerIndex", "Customer", "name:Tom99*");
+    queryByStringQueryParser("customerIndex", "Customer", "name:Tom99*", 0);
     queryByIntRange("pageIndex", "Page", "id", 100, 102);
     
     System.out.println("\nExamples of QueryProvider");
     queryByIntRange("customerIndex", "Customer", "SSN", 995, Integer.MAX_VALUE);
+    
+    // cross regions:
+    // query analyzerIndex to find a Person with address:97763, then use Person's name to find the Customer
+    HashSet persons = queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0);
+    for (Object value:persons) {
+      if (value instanceof Person) {
+        Person person = (Person)value;
+        HashSet customers = queryByStringQueryParser("customerIndex", "Customer", "\""+person.getName()+"\"", 0);
+        for (Object c:customers) {
+          System.out.println("Found a customer:"+c);
+        }
+      }
+    }
   }
   
   public void doClientFunction() {
@@ -394,9 +410,9 @@ public class Main {
     System.out.println();
   }
 
-  private void getResults(LuceneQuery query, String regionName) throws LuceneQueryException {
+  private HashSet getResults(LuceneQuery query, String regionName) throws LuceneQueryException {
     if (query == null) {
-      return;
+      return null;
     }
 
     PageableLuceneQueryResults<String, Object> results = query.findPages();
@@ -404,6 +420,7 @@ public class Main {
       System.out.println("Search found "+results.size()+" rows in "+regionName);
     }
 
+    HashSet values = new HashSet<>();
     int pageno = 0;
     if (results.size() < 20) {
     final AtomicInteger cnt = new AtomicInteger(0);
@@ -418,8 +435,10 @@ public class Main {
           PdxInstance pdx = (PdxInstance)value;
           String jsonString = JSONFormatter.toJSON(pdx);
           System.out.println("Found a json object:"+jsonString);
+          values.add(pdx);
         } else {
           System.out.println("No: "+cnt.get()+":key="+struct.getKey()+",value="+value+",score="+struct.getScore());
+          values.add(value);
         }
         cnt.incrementAndGet();
       });
@@ -429,13 +448,14 @@ public class Main {
       pageno++;
     }
     }
+    return values;
   }
 
-  private void queryByStringQueryParser(String indexName, String regionName, String queryString) throws LuceneQueryException {
+  private HashSet queryByStringQueryParser(String indexName, String regionName, String queryString, int pageSize) throws LuceneQueryException {
     System.out.println("\nQuery string is:"+queryString);
-    LuceneQuery query = service.createLuceneQueryFactory().setPageSize(5).create(indexName, regionName, queryString, "name");
+    LuceneQuery query = service.createLuceneQueryFactory().setPageSize(pageSize).create(indexName, regionName, queryString, "name");
 
-    getResults(query, regionName);
+    return getResults(query, regionName);
   }
 
   private void queryByIntRange(String indexName, String regionName, String fieldName, int lowerValue, int upperValue) throws LuceneQueryException {
