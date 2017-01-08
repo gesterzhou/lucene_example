@@ -312,20 +312,3 @@ cd /Users/gzhou/git3/client/lucene_example
 
 The client will call function "LuceneSearchIndexFunction" at server and display results at client.
 
-step 4: run query from REST
----------------------------
-http://localhost:8081/gemfire-api/docs/index.html
-
-You can try pdx-based-crud-controller to view region
-contents and query-access-controller to do OQL query.
-
-Note: Following step should use my hacked version of geode-1.1.0
-click function-access-controller's POST
-type LuceneSearchIndexFunction into functionId field.
-type following paramter into argsInBody field one by one and click "Try it out!" button. 
-
-personIndex,Person,name:Tom99*,name,-1,false
-personIndex,Person,Tom*JSON,name,-1,false
-analyzerIndex,Person,address:97763,name,-1,false
-customerIndex,Customer,symbol:123,name,-1,false
-
