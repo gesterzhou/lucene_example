@@ -33,8 +33,8 @@ cd ./lucene_example
 
 Part-0: preparation
 
-- download geode 1.0.0 from http://geode.apache.org/releases/
-- Unzip it to $HOME/geode_release/apache-geode-1.0.0-incubating
+- download gemfire 9.0.1 from https://network.pivotal.io/products/pivotal-gemfire
+- Unzip it to $HOME/pivotal-gemfire-9.0.1
 
 You might need 3 copies to run following members:
 - server with feeder (may or may not using cluster config)
@@ -45,7 +45,7 @@ You might need 3 copies to run following members:
   location: $HOME/lucene_demo/client/lucene_example
 
 Do following steps for each of the 3 copies:
-- export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+- export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 - Source code can be got from: 
   git clone git@github.com:gesterzhou/lucene_example.git
 - cd lucene_example
@@ -57,7 +57,7 @@ Part-1: create lucene index from scratch in gfsh
 Step 1: start locator, create server
 ------------------------------------
 cd $HOME/lucene_demo/locator
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 $GEMFIRE/bin/gfsh
 
 gfsh>start locator --name=locator1 --port=12345
@@ -160,7 +160,7 @@ Part-2: A more complex example using gfsh cluster configuration
 step 1: Start server in gfsh. Create index, region and save into cluster config
 ------------------------------------------------------------------
 cd $HOME/lucene_demo/locator
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 $GEMFIRE/bin/gfsh
 
 gfsh>start locator --name=locator1 --port=12345
@@ -169,23 +169,19 @@ gfsh>configure pdx --disk-store=DEFAULT --read-serialized=true
 
 gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost
 
-gfsh>deploy --jar=$HOME/lucene_demo/server/lucene_example/build/libs/lucene_example-0.0.1.jar
+gfsh>deploy --jar=/Users/gzhou/lucene_demo/server/lucene_example/build/libs/lucene_example-0.0.1.jar
   Member    |       Deployed JAR       | Deployed JAR Location
 ----------- | ------------------------ | -------------------------------------------------------------------------------------
-server50505 | lucene_example-0.0.1.jar | /Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode/ser..
+server50505 | lucene_example-0.0.1.jar | /Users/gzhou/lucene_demo/locator/server50505/vf.gf#lucene_example-0.0.1.jar#1
 
 
-gfsh>create lucene index --name=analyzerIndex --region=/Person --field=name,email,address,revenue --analyzer=null,org.apache.lucene.analysis.core.KeywordAnalyzer,examples.MyCharacterAnalyzer,null
-
-gfsh>create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue
-
-gfsh>create lucene index --name=customerIndex --region=/Customer --field=symbol,revenue,SSN,name,email,address,__REGION_VALUE_FIELD
-
-gfsh>create lucene index --name=pageIndex --region=/Page --field=id,title,content
-
-gfsh>create region --name=Person --type=PARTITION_PERSISTENT
-gfsh>create region --name=Customer --type=PARTITION_PERSISTENT
-gfsh>create region --name=Page --type=PARTITION_PERSISTENT
+create lucene index --name=analyzerIndex --region=/Person --field=name,email,address,revenue --analyzer=null,org.apache.lucene.analysis.core.KeywordAnalyzer,examples.MyCharacterAnalyzer,null
+create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue
+create lucene index --name=customerIndex --region=/Customer --field=symbol,revenue,SSN,name,email,address,__REGION_VALUE_FIELD
+create lucene index --name=pageIndex --region=/Page --field=id,title,content
+create region --name=Person --type=PARTITION_PERSISTENT
+create region --name=Customer --type=PARTITION_PERSISTENT
+create region --name=Page --type=PARTITION_PERSISTENT
 
 gfsh>list lucene indexes
  Index Name   | Region Path |                           Indexed Fields                           | Field Analy.. | Status
@@ -199,7 +195,7 @@ personIndex   | /Person     | [name, email, address, revenue]                   
 step 2: start server with feeder
 --------------------------------
 cd $HOME/lucene_demo/server/lucene_example
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 ./gradlew run -PappArgs="[4, true]"
 Note: It will only create cache and get region and index definition from clusterconfiguration saved in locator.
 
@@ -261,7 +257,7 @@ Note: found a lot due to search by "example.com", because personIndex is using s
 step 4: query from client
 -------------------------
 cd $HOME/lucene_demo/client/lucene_example
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 ./gradlew run -PappArgs="[3]"
 
 step 5: view from REST URL
@@ -288,20 +284,20 @@ Part-3: recover from disk
 step 1: start locator 
 ---------------------
 cd $HOME/lucene_demo/locator
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 $GEMFIRE/bin/gfsh
 gfsh>start locator --name=locator1 --port=12345
 
 step 2: start a server with feeder
 ----------------------------------
 cd $HOME/lucene_demo/server/lucene_example
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 ./gradlew run -PappArgs="[1, true]"
 
 step 3: start server only member to recover from disk
 -----------------------------------------------------
 cd $HOME/lucene_demo/server/lucene_example
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 ./gradlew run -PappArgs="[2, true]"
 It will recover from disk for both data and index.
 
@@ -314,7 +310,7 @@ key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 L
 
 step 4: start a client
 cd $HOME/lucene_demo/client/lucene_example
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 ./gradlew run -PappArgs="[3]"
 
 step 5: show index definition including analyzers and how index usage in stats
@@ -336,20 +332,20 @@ Part-4: call function from client and REST
 step 1: start locator 
 ---------------------
 cd $HOME/lucene_demo/locator
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 $GEMFIRE/bin/gfsh
 gfsh>start locator --name=locator1 --port=12345
 
 step 2: start server with feeder
 --------------------------------
 cd $HOME/lucene_demo/server/lucene_example
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 ./gradlew run -PappArgs="[1, true]"
 
 step 3: run a client
 --------------------
 cd $HOME/lucene_demo/client/lucene_example
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 ./gradlew run -PappArgs="[3]"
 
 The client will call function "LuceneSearchIndexFunction" at server and display results at client.
