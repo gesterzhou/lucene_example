@@ -33,6 +33,9 @@ cd ./lucene_example
 
 Part-0: preparation
 
+- download geode 1.0.0 from http://geode.apache.org/releases/
+- Unzip it to $HOME/geode_release/apache-geode-1.0.0-incubating
+
 You might need 3 copies to run following members:
 - server with feeder (may or may not using cluster config)
   location: $HOME/lucene_demo/server/lucene_example
@@ -42,8 +45,6 @@ You might need 3 copies to run following members:
   location: $HOME/lucene_demo/client/lucene_example
 
 Do following steps for each of the 3 copies:
-- download geode 1.0.0 from http://geode.apache.org/releases/
-- Unzip it to $HOME/geode_release/apache-geode-1.0.0-incubating
 - export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
 - Source code can be got from: 
   git clone git@github.com:gesterzhou/lucene_example.git
@@ -140,6 +141,13 @@ Index Name | Region Path |  Indexed Fields   | Field Analyzer |   Status    | Qu
 ---------- | ----------- | ----------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
 testIndex  | /testRegion | [__REGION_VALUE.. | {}             | Initialized | 0                | 0       | 0       | 0
 
+gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=value* --defaultField=__REGION_VALUE_FIELD
+key | value  | score
+--- | ------ | -----
+3   | value3 | 1
+2   | value2 | 1
+1   | value1 | 1
+
 Step 8: clean up
 ----------------
 gfsh>shutdown --include-locators=true
@@ -161,7 +169,7 @@ gfsh>configure pdx --disk-store=DEFAULT --read-serialized=true
 
 gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost
 
-gfsh>deploy --jar=$HOME/server/lucene_example/build/libs/lucene_example-0.0.1.jar
+gfsh>deploy --jar=$HOME/lucene_demo/server/lucene_example/build/libs/lucene_example-0.0.1.jar
   Member    |       Deployed JAR       | Deployed JAR Location
 ----------- | ------------------------ | -------------------------------------------------------------------------------------
 server50505 | lucene_example-0.0.1.jar | /Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode/ser..
@@ -263,9 +271,9 @@ http://localhost:8080/gemfire-api/docs/index.html by gfsh
 http://localhost:8084/gemfire-api/docs/index.html by API
 
 There're 3 controllers are prefined:
-- function-access-controller: run a function at server
-- pdx-based-crud-controller: view contents of region
-- query-access-controller: run oql query
+- functions(or function-access-controller): run a function at server
+- region(or pdx-based-crud-controller): view contents of region
+- queries(or query-access-controller): run oql query
 
 step 6: clean up
 On gfsh window: 
