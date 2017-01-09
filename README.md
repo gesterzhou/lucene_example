@@ -28,36 +28,36 @@ http://localhost:8081/gemfire-api/docs/index.html (for feeder)
 http://localhost:8080/gemfire-api/docs/index.html (for server started by gfsh)
 
 The simplest way to run is run a standalone test:
-cd ./git3/lucene_example
+cd ./lucene_example
 ./gradlew run
 
 Part-0: preparation
-download geode 1.0.0 from http://geode.apache.org/releases/
-Unzip it to $HOME/geode_release/apache-geode-1.0.0-incubating
-
-export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
-
-Source code can be got from: 
-git clone git@github.com:gesterzhou/lucene_example.git
-cd lucene_example
-./gradlew build
 
 You might need 3 copies to run following members:
 - server with feeder (may or may not using cluster config)
-  location: $HOME/server/lucene_example
+  location: $HOME/lucene_demo/server/lucene_example
 - server only
-  location: $HOME/serveronly/lucene_example
+  location: $HOME/lucene_demo/serveronly/lucene_example
 - client
-  location: $HOME/client/lucene_example
+  location: $HOME/lucene_demo/client/lucene_example
+
+Do following steps for each of the 3 copies:
+- download geode 1.0.0 from http://geode.apache.org/releases/
+- Unzip it to $HOME/geode_release/apache-geode-1.0.0-incubating
+- export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+- Source code can be got from: 
+  git clone git@github.com:gesterzhou/lucene_example.git
+- cd lucene_example
+- ./gradlew build
 
 Part-1: create lucene index from scratch in gfsh
 ================================================
 
 Step 1: start locator, create server
 ------------------------------------
-export GEMIFRE=/Users/gzhou/git3/geode_release/apache-geode-1.0.0-incubating
-cd $GEMFIRE
-bin/gfsh
+cd $HOME/lucene_demo/locator
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+$GEMFIRE/bin/gfsh
 
 gfsh>start locator --name=locator1 --port=12345
 
@@ -67,6 +67,7 @@ gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12
 
 Step 3: create lucene index from scratch
 ----------------------------------------
+gfsh>help create lucene index
 gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD
                  Member                  | Status
 ---------------------------------------- | ---------------------------------
@@ -110,6 +111,7 @@ Key         : 3
 Value Class : java.lang.String
 Old Value   : <NULL>
 
+gfsh>help search lucene
 gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=value1 --defaultField=__REGION_VALUE_FIELD
 key | value  | score
 --- | ------ | ---------
@@ -133,9 +135,15 @@ gfsh>stop server --name=server50505
 Step 7: start the server again and recover from disk
 ----------------------------------------------------
 gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost
+gfsh>list lucene indexes --with-stats
+Index Name | Region Path |  Indexed Fields   | Field Analyzer |   Status    | Query Executions | Updates | Commits | Documents
+---------- | ----------- | ----------------- | -------------- | ----------- | ---------------- | ------- | ------- | ---------
+testIndex  | /testRegion | [__REGION_VALUE.. | {}             | Initialized | 0                | 0       | 0       | 0
 
 Step 8: clean up
 ----------------
+gfsh>shutdown --include-locators=true
+gfsh>exit
 rm -rf locator1 server50505
 
 Part-2: A more complex example using gfsh cluster configuration
@@ -143,13 +151,17 @@ Part-2: A more complex example using gfsh cluster configuration
 
 step 1: Start server in gfsh. Create index, region and save into cluster config
 ------------------------------------------------------------------
+cd $HOME/lucene_demo/locator
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+$GEMFIRE/bin/gfsh
+
 gfsh>start locator --name=locator1 --port=12345
 
 gfsh>configure pdx --disk-store=DEFAULT --read-serialized=true
 
 gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost
 
-gfsh>deploy --jar=/Users/gzhou/git3/lucene_example/build/libs/lucene_example-0.0.1.jar
+gfsh>deploy --jar=$HOME/server/lucene_example/build/libs/lucene_example-0.0.1.jar
   Member    |       Deployed JAR       | Deployed JAR Location
 ----------- | ------------------------ | -------------------------------------------------------------------------------------
 server50505 | lucene_example-0.0.1.jar | /Users/gzhou/git_support/gemfire/open/geode-assembly/build/install/apache-geode/ser..
@@ -178,12 +190,15 @@ personIndex   | /Person     | [name, email, address, revenue]                   
 
 step 2: start server with feeder
 --------------------------------
-cd ~/git3/lucene_example
+cd $HOME/lucene_demo/server/lucene_example
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
 ./gradlew run -PappArgs="[4, true]"
 Note: It will only create cache and get region and index definition from clusterconfiguration saved in locator.
 
 step 3: do some queries
 ---------------------
+return to gfsh session in step 1
+
 gfsh>list members
    Name     | Id
 ----------- | ------------------------------------------------
@@ -192,13 +207,14 @@ server50505 | 192.168.1.3(server50505:32949)<v1>:1025
 server50509 | 192.168.1.3(server50509:33041)<v6>:1026
 
 #analyzerIndex used customized analyzer which will tokenize by '_'
-gfsh>search lucene --region=/Person --name=personIndex --defaultField=address --queryStrings="97763"
-No results
-
 gfsh>search lucene --region=/Person --name=analyzerIndex --defaultField=address --queryStrings="97763"
  key   |                                                   value                                                   | score
 ------ | --------------------------------------------------------------------------------------------------------- | ---------
 key763 | Person{name='Tom763 Zhou', email='tzhou763@example.com', address='763 Lindon St, Portland_OR_97763', re.. | 1.6694657
+
+#compare with standard analyzer in personIndex, which cannot find above entry 
+gfsh>search lucene --region=/Person --name=personIndex --defaultField=address --queryStrings="97763"
+No results
 
 # query json object
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom*JSON"
@@ -236,7 +252,8 @@ Note: found a lot due to search by "example.com", because personIndex is using s
 
 step 4: query from client
 -------------------------
-cd /Users/gzhou/git3/client/lucene_example
+cd $HOME/lucene_demo/client/lucene_example
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
 ./gradlew run -PappArgs="[3]"
 
 step 5: view from REST URL
@@ -245,27 +262,38 @@ There're 2 REST web servers:
 http://localhost:8080/gemfire-api/docs/index.html by gfsh
 http://localhost:8084/gemfire-api/docs/index.html by API
 
-step 6: clean up
-gfsh>stop server --name=server50505
-gfsh>stop locator --name=locator1
+There're 3 controllers are prefined:
+- function-access-controller: run a function at server
+- pdx-based-crud-controller: view contents of region
+- query-access-controller: run oql query
 
-on gfsh member, rm -rf locator1 server50505
-on server member, run ./clean.sh
+step 6: clean up
+On gfsh window: 
+gfsh>shutdown --include-locators=true
+rm -rf locator1 server50505
+
+On server member which is running at $HOME/lucene_demo/server/lucene_example, 
+run ./clean.sh
 
 Part-3: recover from disk
 ==========================
 step 1: start locator 
 ---------------------
+cd $HOME/lucene_demo/locator
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+$GEMFIRE/bin/gfsh
 gfsh>start locator --name=locator1 --port=12345
 
 step 2: start a server with feeder
 ----------------------------------
-cd ~/git3/lucene_example
+cd $HOME/lucene_demo/server/lucene_example
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
 ./gradlew run -PappArgs="[1, true]"
 
 step 3: start server only member to recover from disk
 -----------------------------------------------------
-cd ~/git3/lucene_example
+cd $HOME/lucene_demo/server/lucene_example
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
 ./gradlew run -PappArgs="[2, true]"
 It will recover from disk for both data and index.
 
@@ -277,7 +305,8 @@ gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=email --
 key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 Lindon St, Portland_OR_97490', revenue='490000'} | 1.89712
 
 step 4: start a client
-cd ~/git3/client/lucene_example
+cd $HOME/lucene_demo/client/lucene_example
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
 ./gradlew run -PappArgs="[3]"
 
 step 5: show index definition including analyzers and how index usage in stats
@@ -298,16 +327,21 @@ Part-4: call function from client and REST
 ==========================================
 step 1: start locator 
 ---------------------
+cd $HOME/lucene_demo/locator
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
+$GEMFIRE/bin/gfsh
 gfsh>start locator --name=locator1 --port=12345
 
 step 2: start server with feeder
 --------------------------------
-cd ~/git3/lucene_example
+cd $HOME/lucene_demo/server/lucene_example
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
 ./gradlew run -PappArgs="[1, true]"
 
 step 3: run a client
 --------------------
-cd /Users/gzhou/git3/client/lucene_example
+cd $HOME/lucene_demo/client/lucene_example
+export GEMFIRE=$HOME/geode_release/apache-geode-1.0.0-incubating
 ./gradlew run -PappArgs="[3]"
 
 The client will call function "LuceneSearchIndexFunction" at server and display results at client.
