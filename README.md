@@ -163,13 +163,13 @@ cd $HOME/lucene_demo/locator
 export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 $GEMFIRE/bin/gfsh
 
-gfsh>start locator --name=locator1 --port=12345
+start locator --name=locator1 --port=12345
 
-gfsh>configure pdx --disk-store=DEFAULT --read-serialized=true
+configure pdx --disk-store=DEFAULT --read-serialized=true
 
-gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost
+start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost --group=group50505
 
-gfsh>deploy --jar=/Users/gzhou/lucene_demo/server/lucene_example/build/libs/lucene_example-0.0.1.jar
+gfsh>deploy --jar=/Users/gzhou/lucene_demo/server/lucene_example/build/libs/lucene_example-0.0.1.jar --group=group50505
   Member    |       Deployed JAR       | Deployed JAR Location
 ----------- | ------------------------ | -------------------------------------------------------------------------------------
 server50505 | lucene_example-0.0.1.jar | /Users/gzhou/lucene_demo/locator/server50505/vf.gf#lucene_example-0.0.1.jar#1
