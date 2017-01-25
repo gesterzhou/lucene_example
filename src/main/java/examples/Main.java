@@ -224,7 +224,7 @@ public class Main {
     PersonRegion = ((Cache)cache).createRegionFactory(shortcut).create("Person");
 
     // create an index using standard analyzer on region /Customer
-    service.createIndex("customerIndex", "Customer", "symbol", "revenue", "SSN", "name", "email", "address", LuceneService.REGION_VALUE_FIELD);
+    service.createIndex("customerIndex", "Customer", "name", "symbol", "revenue", "SSN", "contact.name", "contact.email", "contact.address", "contact.homepage.title", LuceneService.REGION_VALUE_FIELD);
     CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
 
     // create an index using standard analyzer on region /Page
@@ -248,12 +248,17 @@ public class Main {
     queryByStringQueryParser("customerIndex", "Customer", "symbol:123", 0);
     queryByStringQueryParser("customerIndex", "Customer", "symbol:456", 0);
     
-    queryByStringQueryParser("customerIndex", "Customer", "name:Tom99*", 0);
+    queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0);
     queryByIntRange("pageIndex", "Page", "id", 100, 102);
-    
+
     System.out.println("\nExamples of QueryProvider");
     queryByIntRange("customerIndex", "Customer", "SSN", 995, Integer.MAX_VALUE);
     
+    System.out.println("\nExamples of ToParentBlockJoin query provider");
+    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou1*", "email");
+
+    queryByGrandChildJoinQuery("customerIndex", "Customer", "symbol", "name", "title", "email:tzhou1*", "PivotalPage123*");
+
     // cross regions:
     // query analyzerIndex to find a Person with address:97763, then use Person's name to find the Customer
     HashSet persons = queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0);
@@ -466,4 +471,17 @@ public class Main {
     getResults(query, regionName);
   }
   
+  private HashSet queryByJoinQuery(String indexName, String regionName, String parentField, String parentFilter, String childQueryString, String childField) throws LuceneQueryException {
+    ToParentBlockJoinQueryProvider provider = new ToParentBlockJoinQueryProvider(parentField, parentFilter, childQueryString, childField);
+    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
+
+    return getResults(query, regionName);
+  }
+  
+  private HashSet queryByGrandChildJoinQuery(String indexName, String regionName, String parentDefaultField, String childDefaultField, String grandChildDefaultField, String queryOnChild, String queryOnGrandChild) throws LuceneQueryException {
+    ToGrandParentBlockJoinQueryProvider provider = new ToGrandParentBlockJoinQueryProvider(parentDefaultField, childDefaultField, grandChildDefaultField, queryOnChild, queryOnGrandChild);
+    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
+
+    return getResults(query, regionName);
+  }
 }

@@ -19,10 +19,16 @@ public class Page implements Serializable {
 
   public Page(int idx) {
     this.id = idx;
-    this.title = "Pivotal Page:"+idx;
+    this.title = "PivotalPage"+idx;
     this.content = desc;
   }
 
+  public Page(String title) {
+    this.id = 0;
+    this.title = "PivotalPage"+title;
+    this.content = desc;
+  }
+  
   public int getId() {
     return id;
   }

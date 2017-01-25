@@ -50,8 +50,8 @@ dependencies {
     // compile "org.apache.geode:geode-lucene:1.0.0-incubating"
 
     // If using support version (gemfire 9.0.1)
-    compile "io.pivotal.gemfire:geode-core:9.0.1"
-    compile "io.pivotal.gemfire:geode-lucene:9.0.1"
+    compile "io.pivotal.gemfire:geode-core:9.1.0"
+    compile "io.pivotal.gemfire:geode-lucene:9.1.0"
 
     // If using support version (geode 1.1.0)
     // compile "org.apache.geode:geode-core:1.1.0-incubating-SNAPSHOT"
@@ -69,6 +69,9 @@ dependencies {
     compile "org.eclipse.jetty:jetty-security:9.3.6.v20151106"
     compile "org.eclipse.jetty:jetty-xml:9.3.6.v20151106"
     compile "org.eclipse.jetty:jetty-servlet:9.3.6.v20151106"
+
+    compile "org.apache.lucene:lucene-join:6.0.0"
+    compile "org.apache.lucene:lucene-grouping:6.0.0"
 
     // Declare the dependency for your favourite test framework you want to use in your tests.
     // TestNG is also supported by the Gradle Test task. Just change the
