@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -304,7 +305,7 @@ public class Main {
     }
   }
   
-  private void waitUntilFlushed(String indexName, String regionName) {
+  private void waitUntilFlushed(String indexName, String regionName) throws InterruptedException {
     LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex(indexName, regionName);
     if (index == null) {
       // it's a client
@@ -313,7 +314,7 @@ public class Main {
     boolean status = false;
     long then = System.currentTimeMillis();
     do {
-      status = index.waitUntilFlushed(60000);
+      status = index.waitUntilFlushed(60000, TimeUnit.MILLISECONDS);
     } while (status == false);
     System.out.println("Total wait time is:"+(System.currentTimeMillis() - then));
   }
