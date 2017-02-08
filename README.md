@@ -79,7 +79,7 @@ Index Name | Region Path |     Indexed Fields     | Field Analy.. | Status  | Qu
 ---------- | ----------- | ---------------------- | ------------- | ------- | ---------------- | ------- | ------- | ---------
 testIndex  | /testRegion | [__REGION_VALUE_FIELD] | {__REGION_V.. | Defined | NA               | NA      | NA      | NA
 
-gfsh>create region --name=testRegion --type=PARTITION_PERSISTENT
+gfsh>create region --name=testRegion --type=PARTITION_REDUNDANT_PERSISTENT
   Member    | Status
 ----------- | ---------------------------------------------
 server50505 | Region "/testRegion" created on "server50505"
@@ -179,9 +179,9 @@ create lucene index --name=analyzerIndex --region=/Person --field=name,email,add
 create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue
 create lucene index --name=customerIndex --region=/Customer --field=symbol,revenue,SSN,name,email,address,__REGION_VALUE_FIELD
 create lucene index --name=pageIndex --region=/Page --field=id,title,content
-create region --name=Person --type=PARTITION_PERSISTENT
-create region --name=Customer --type=PARTITION_PERSISTENT
-create region --name=Page --type=PARTITION_PERSISTENT
+create region --name=Person --type=PARTITION_REDUNDANT_PERSISTENT
+create region --name=Customer --type=PARTITION_REDUNDANT_PERSISTENT
+create region --name=Page --type=PARTITION_REDUNDANT_PERSISTENT
 
 gfsh>list lucene indexes
  Index Name   | Region Path |                           Indexed Fields                           | Field Analy.. | Status

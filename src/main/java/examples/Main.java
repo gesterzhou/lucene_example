@@ -119,7 +119,7 @@ public class Main {
           // do feed
           // do query
           prog.createCache(serverPort);
-          prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);        
+          prog.createIndexAndRegions(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT);        
 
           prog.feed(ENTRY_COUNT);
           prog.waitUntilFlushed("personIndex", "Person");
@@ -133,7 +133,7 @@ public class Main {
         case SERVER_ONLY:
           // create cache, create index, create region
           prog.createCache(serverPort);
-          prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);
+          prog.createIndexAndRegions(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT);
           break;
       }
       
