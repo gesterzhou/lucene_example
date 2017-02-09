@@ -314,7 +314,7 @@ public class Main {
     boolean status = false;
     long then = System.currentTimeMillis();
     do {
-      status = index.waitUntilFlushed(60000, TimeUnit.MILLISECONDS);
+      status = service.waitUntilFlushed(indexName, regionName, 60000, TimeUnit.MILLISECONDS);
     } while (status == false);
     System.out.println("Total wait time is:"+(System.currentTimeMillis() - then));
   }
