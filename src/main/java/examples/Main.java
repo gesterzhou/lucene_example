@@ -443,7 +443,14 @@ public class Main {
         cnt.incrementAndGet();
       });
       if (query.getPageSize() != 0) {
-        System.out.println("Page:"+pageno+" ends here ------------");
+        System.out.println("Page:"+pageno+" ends here, press any key to show next page ------------");
+        try {
+          int c = System.in.read();
+        }
+        catch (IOException e) {
+          // TODO Auto-generated catch block
+          e.printStackTrace();
+        }
       }
       pageno++;
     }
