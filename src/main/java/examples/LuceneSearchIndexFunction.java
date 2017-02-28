@@ -1,5 +1,6 @@
 package examples;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +58,7 @@ public class LuceneSearchIndexFunction<K, V> extends FunctionAdapter implements 
   }
   
   public void execute(final FunctionContext context) {
-    Set<LuceneSearchResults> result = new HashSet<>();
+//    Set<LuceneSearchResults> result = new HashSet<>();
     final Cache cache = getCache();
     LuceneQueryInfo queryInfo = null;
     Object args = context.getArguments();
@@ -78,27 +79,31 @@ public class LuceneSearchIndexFunction<K, V> extends FunctionAdapter implements 
           .setResultLimit(queryInfo.getLimit()).create(queryInfo.getIndexName(),
               queryInfo.getRegionPath(), queryInfo.getQueryString(), queryInfo.getDefaultField());
       if (queryInfo.getKeysOnly()) {
-        query.findKeys().forEach(key -> result.add(new LuceneSearchResults(key.toString())));
+//        query.findKeys().forEach(key -> result.add(new LuceneSearchResults(key.toString())));
+        context.getResultSender().lastResult(query.findKeys());
       } else {
         PageableLuceneQueryResults<K, V> pageableLuceneQueryResults = query.findPages();
+        List<LuceneResultStruct<K, V>> pageResult = new ArrayList();
         while (pageableLuceneQueryResults.hasNext()) {
           List<LuceneResultStruct<K, V>> page = pageableLuceneQueryResults.next();
-          page.stream()
-          .forEach(searchResult -> {
-            result.add(new LuceneSearchResults<K, V>(searchResult.getKey().toString(),
-                searchResult.getValue().toString(), searchResult.getScore())); 
-          });
+          pageResult.addAll(page);
+//          page.stream()
+//          .forEach(searchResult -> {
+//            result.add(new LuceneSearchResults<K, V>(searchResult.getKey().toString(),
+//                searchResult.getValue().toString(), searchResult.getScore())); 
+//          });
         }
+        context.getResultSender().lastResult(pageResult);
       }
-      if (result != null) {
-        context.getResultSender().lastResult(result);
-      }
+//      if (result != null) {
+//        context.getResultSender().lastResult(result);
+//      }
     } catch (LuceneQueryException e) {
-      result.add(new LuceneSearchResults(true, e.getRootCause().getMessage()));
-      context.getResultSender().lastResult(result);
+//      result.add(new LuceneSearchResults(true, e.getRootCause().getMessage()));
+      context.getResultSender().lastResult(new LuceneSearchResults(true, e.getRootCause().getMessage()));
     } catch (Exception e) {
-      result.add(new LuceneSearchResults(true, e.getMessage()));
-      context.getResultSender().lastResult(result);
+//      result.add(new LuceneSearchResults(true, e.getMessage()));
+      context.getResultSender().lastResult(new LuceneSearchResults(true, e.getMessage()));
     }
   }
 }

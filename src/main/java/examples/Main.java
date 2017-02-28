@@ -1,6 +1,7 @@
 package examples;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -284,11 +285,22 @@ public class Main {
     ResultCollector<?,?> rc = execution.execute("LuceneSearchIndexFunction");
     displayResults(rc);
     
-    String parametersForREST = "personIndex,Person,name:Tom99*,name,-1,false";
-    execution = FunctionService.onServer(pool).withArgs(queryInfo);
-    rc = execution.execute("LuceneSearchIndexFunction");
-    displayResults(rc);
-    
+    {
+      String parametersForREST = "personIndex,Person,name:Tom99*,name,-1,false";
+      System.out.println("Paramter is: "+parametersForREST);
+      execution = FunctionService.onServer(pool).withArgs(parametersForREST);
+      rc = execution.execute("LuceneSearchIndexFunction");
+      displayResults(rc);
+    }
+
+    {
+      String parametersForREST = "personIndex,Person,name:Tom99*,name,-1,true";
+      System.out.println(parametersForREST);
+      execution = FunctionService.onServer(pool).withArgs(parametersForREST);
+      rc = execution.execute("LuceneSearchIndexFunction");
+      displayResults(rc);
+    }
+
     queryInfo = new LuceneQueryInfo("analyzerIndex", "/Person", "address:97763", "name", -1, false);
     execution = FunctionService.onServer(pool).withArgs(queryInfo);
     rc = execution.execute("LuceneSearchIndexFunction");
@@ -296,13 +308,15 @@ public class Main {
   }
   
   private void displayResults(ResultCollector<?,?> rc) {
-    List<Set<LuceneSearchResults>> functionResults = (List<Set<LuceneSearchResults>>) rc.getResult();
-    List<LuceneSearchResults> results = functionResults.stream().flatMap(set -> set.stream()).sorted()
-        .collect(Collectors.toList());
-    System.out.println("\nClient Function found "+results.size()+" results");
-    for (LuceneSearchResults rst:results) {
-      System.out.println(rst);
-    }
+//    List<Set<LuceneSearchResults>> functionResults = (List<Set<LuceneSearchResults>>) rc.getResult();
+//    List<LuceneSearchResults> results = functionResults.stream().flatMap(set -> set.stream()).sorted()
+//        .collect(Collectors.toList());
+    ArrayList functionResults = (ArrayList)((ArrayList)rc.getResult()).get(0);
+    
+    System.out.println("\nClient Function found "+functionResults.size()+" results");
+    functionResults.stream().forEach(result -> {
+      System.out.println(result);
+    });
   }
   
   private void waitUntilFlushed(String indexName, String regionName) throws InterruptedException {
