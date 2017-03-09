@@ -4,14 +4,15 @@ This example try to show as many features of gemfire lucene
 in a light-weight application. 
 
 Following gemfire lucene features are tested:
+
 - create an application using gemfire lucene from scratch.
 - create lucene index from scratch, with or without analyzer
 - create lucene index into cluster configuration and then used by other members
 - create user objects, primitive values(both string and integer), and json objects, put them into gemfire cache and indexed them
 - Query using normal StringQueryParser, which is the main weapon. Lucene syntax is supported.
-- Demonstate the different query results using analyzers, included a home-baked analyzer
-- Demonstate query on primitive value and json object. 
-- Demonstate an example of using QueryProvider to create my own lucene query object. This feature is for advanced lucene users. In this example, it's a Range Query for integer value. The demo provided 3 different way to use QueryProvider. 
+- Demonstrate the different query results using analyzers, included a home-baked analyzer
+- Demonstrate query on primitive value and json object. 
+- Demonstrate an example of using QueryProvider to create my own lucene query object. This feature is for advanced lucene users. In this example, it's a Range Query for integer value. The demo provided 3 different way to use QueryProvider. 
 - start a REST server to show the contents
 - REST API to do lucene search (TBD)
 - From a client (or native client) to run lucene query through calling a function execution
@@ -24,10 +25,12 @@ and client will do the same lucene queries.
 The feeding can be done by client too, but testing feed-from-client is not the objective, query-from-client is.
 
 REST URL is:
-http://localhost:8081/gemfire-api/docs/index.html (for feeder)
-http://localhost:8080/gemfire-api/docs/index.html (for server started by gfsh)
+
+- http://localhost:8081/gemfire-api/docs/index.html (for feeder)
+- http://localhost:8080/gemfire-api/docs/index.html (for server started by gfsh)
 
 The simplest way to run is run a standalone test:
+
 cd ./lucene_example
 ./gradlew run
 
@@ -37,6 +40,7 @@ Part-0: preparation
 - Unzip it to $HOME/pivotal-gemfire-9.0.1
 
 You might need 3 copies to run following members:
+
 - server with feeder (may or may not using cluster config)
   location: $HOME/lucene_demo/server/lucene_example
 - server only
@@ -45,6 +49,7 @@ You might need 3 copies to run following members:
   location: $HOME/lucene_demo/client/lucene_example
 
 Do following steps for each of the 3 copies:
+
 - export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 - Source code can be got from: 
   git clone git@github.com:gesterzhou/lucene_example.git
@@ -201,7 +206,7 @@ Note: It will only create cache and get region and index definition from cluster
 
 step 3: do some queries
 ---------------------
-return to gfsh session in step 1
+Return to gfsh session in step 1
 
 gfsh>list members
    Name     | Id
@@ -263,16 +268,20 @@ export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 step 5: view from REST URL
 --------------------------
 There're 2 REST web servers:
+
 http://localhost:8080/gemfire-api/docs/index.html by gfsh
 http://localhost:8084/gemfire-api/docs/index.html by API
 
 There're 3 controllers are prefined:
+
 - functions(or function-access-controller): run a function at server
 - region(or pdx-based-crud-controller): view contents of region
 - queries(or query-access-controller): run oql query
 
 step 6: clean up
+----------------
 On gfsh window: 
+
 gfsh>shutdown --include-locators=true
 rm -rf locator1 server50505
 
@@ -309,6 +318,8 @@ gfsh>search lucene --name=analyzerIndex --region=/Person --defaultField=email --
 key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 Lindon St, Portland_OR_97490', revenue='490000'} | 1.89712
 
 step 4: start a client
+----------------------
+
 cd $HOME/lucene_demo/client/lucene_example
 export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
 ./gradlew run -PappArgs="[3]"
