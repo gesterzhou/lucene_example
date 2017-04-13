@@ -222,15 +222,18 @@ public class Main {
     service.createIndex("analyzerIndex", "Person", fields);
 
     // create an index using standard analyzer on region /Person
-    service.createIndex("personIndex", "Person", "name", "email", "address", "revenue");
+    service.createIndexFactory().setFields("name", "email", "address", "revenue").create("personIndex", "Person");
     PersonRegion = ((Cache)cache).createRegionFactory(shortcut).create("Person");
 
     // create an index using standard analyzer on region /Customer
-    service.createIndex("customerIndex", "Customer", "name", "symbol", "revenue", "SSN", "contact.name", "contact.email", "contact.address", "contact.homepage.title", LuceneService.REGION_VALUE_FIELD);
+    service.createIndexFactory().addField("name").addField("symbol").addField("revenue").addField("SSN")
+    .addField("contact.name").addField("contact.email").addField("contact.address").addField("contact.homepage.title")
+    .addField(LuceneService.REGION_VALUE_FIELD)
+    .create("customerIndex", "Customer");
     CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
 
     // create an index using standard analyzer on region /Page
-    service.createIndex("pageIndex", "Page", "id", "title", "content");
+    service.createIndexFactory().setFields("id", "title", "content").create("pageIndex", "Page");
     PageRegion = ((Cache)cache).createRegionFactory(shortcut).create("Page");
   }
 
@@ -333,14 +336,14 @@ public class Main {
     System.out.println("Total wait time is:"+(System.currentTimeMillis() - then));
   }
 
-  private void defineIndexAndRegion(String indexName, String regionName, RegionShortcut regionType, String...fields) {
-    service.createIndex(indexName, regionName, fields);
-  }
-
-  private Region createRegion(String regionName, RegionShortcut regionType) {
-    RegionFactory<Object, Object> regionFactory = ((Cache)cache).createRegionFactory(regionType);
-    return regionFactory.create(regionName);
-  }
+//  private void defineIndexAndRegion(String indexName, String regionName, RegionShortcut regionType, String...fields) {
+//    service.createIndex(indexName, regionName, fields);
+//  }
+//
+//  private Region createRegion(String regionName, RegionShortcut regionType) {
+//    RegionFactory<Object, Object> regionFactory = ((Cache)cache).createRegionFactory(regionType);
+//    return regionFactory.create(regionName);
+//  }
 
   private void feed(int count) {
     for (int i=0; i<count; i++) {
