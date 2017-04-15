@@ -21,6 +21,8 @@ import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.util.CharTokenizer;
 import org.apache.lucene.queryparser.classic.ParseException;
 
+import objectsize.ObjectSizer;
+
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.CacheFactory;
 import org.apache.geode.cache.DataPolicy;
@@ -51,6 +53,7 @@ import org.apache.geode.cache.lucene.internal.LuceneServiceImpl;
 import org.apache.geode.distributed.ServerLauncher;
 import org.apache.geode.distributed.ServerLauncher.Builder;
 import org.apache.geode.internal.DSFIDFactory;
+import org.apache.geode.internal.cache.PartitionedRegion;
 import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.pdx.JSONFormatter;
 import org.apache.geode.pdx.PdxInstance;
@@ -128,6 +131,9 @@ public class Main {
           prog.waitUntilFlushed("analyzerIndex", "Person");
           prog.waitUntilFlushed("customerIndex", "Customer");
           prog.waitUntilFlushed("pageIndex", "Page");
+          
+          // calculate region size
+          prog.calculateSize("personIndex", "Person");
           
           prog.doQuery();
           break;
@@ -344,6 +350,23 @@ public class Main {
 //    RegionFactory<Object, Object> regionFactory = ((Cache)cache).createRegionFactory(regionType);
 //    return regionFactory.create(regionName);
 //  }
+  
+  private void calculateSize(String indexName, String regionName) {
+    LuceneIndexForPartitionedRegion index = (LuceneIndexForPartitionedRegion)service.getIndex(indexName, regionName);
+    if (index == null) {
+      return;
+    }
+    Region region = cache.getRegion(regionName);
+    if (region == null) {
+      return;
+    }
+ 
+    PartitionedRegion indexPr = index.getFileAndChunkRegion();
+    long dataRegionSize = ObjectSizer.calculateSize(region, false);
+    long indexRegionSize = ObjectSizer.calculateSize(region, false);
+    System.out.println("Region "+PersonRegion.getFullPath()+" has "+ENTRY_COUNT
+        + " entries, size is "+dataRegionSize/1000+"KB, index size is "+indexRegionSize/1000+"KB");
+  }
 
   private void feed(int count) {
     for (int i=0; i<count; i++) {
