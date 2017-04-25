@@ -368,19 +368,19 @@ public class Main {
   
   private void calculateSize(String indexName, String regionName) {
     LuceneIndexForPartitionedRegion index = (LuceneIndexForPartitionedRegion)service.getIndex(indexName, regionName);
-    if (index == null) {
-      return;
-    }
     Region region = cache.getRegion(regionName);
     if (region == null) {
       return;
     }
- 
-    PartitionedRegion indexPr = index.getFileAndChunkRegion();
     long dataRegionSize = ObjectSizer.calculateSize(region, false);
-    long indexRegionSize = ObjectSizer.calculateSize(region, false);
     System.out.println("Region "+PersonRegion.getFullPath()+" has "+ENTRY_COUNT
-        + " entries, size is "+dataRegionSize/1000+"KB, index size is "+indexRegionSize/1000+"KB");
+        + " entries, size is "+dataRegionSize/1000+"KB");
+ 
+    if (index != null) {
+      PartitionedRegion indexPr = index.getFileAndChunkRegion();
+      long indexRegionSize = ObjectSizer.calculateSize(region, false);
+      System.out.println("index size is "+indexRegionSize/1000+"KB");
+    }
   }
   
   private void doDump(String indexName, String regionName) {
