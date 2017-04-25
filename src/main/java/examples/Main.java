@@ -75,7 +75,8 @@ public class Main {
   final static int SERVER_ONLY = 2;
   final static int CLIENT = 3;
   final static int SERVER_WITH_CLUSTER_CONFIG = 4;
-  static int instanceType = SERVER_WITH_FEEDER;
+  final static int CALCULATE_SIZE = 5;
+  static int instanceType = CALCULATE_SIZE;
   
   /* Usage: ~ [1|2|3|4 [isUsingLocator]]
    * 1: server with feeder
@@ -132,9 +133,6 @@ public class Main {
           prog.waitUntilFlushed("customerIndex", "Customer");
           prog.waitUntilFlushed("pageIndex", "Page");
           
-          // calculate region size
-          prog.calculateSize("personIndex", "Person");
-          
           prog.doQuery();
           break;
       
@@ -143,6 +141,17 @@ public class Main {
           prog.createCache(serverPort);
           prog.createIndexAndRegions(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT);
           break;
+          
+        case CALCULATE_SIZE:
+          prog.createCache(serverPort);
+          prog.createIndexAndRegions(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT);        
+
+          prog.feed(ENTRY_COUNT);
+          prog.waitUntilFlushed("personIndex", "Person");
+          
+          // calculate region size
+          prog.calculateSize("personIndex", "Person");
+          prog.doDump("personIndex", "Person");
       }
       
       System.out.println("Press any key to exit");
@@ -220,27 +229,31 @@ public class Main {
   }
 
   private void createIndexAndRegions(RegionShortcut shortcut) {
-    // create an index using several analyzers on region /Person
-    Map<String, Analyzer> fields = new HashMap<String, Analyzer>();
-    fields.put("name",  null);
-    fields.put("email", new KeywordAnalyzer());
-    fields.put("address", new MyCharacterAnalyzer());
-    service.createIndex("analyzerIndex", "Person", fields);
+    if (instanceType != CALCULATE_SIZE) {
+      // create an index using several analyzers on region /Person
+      Map<String, Analyzer> fields = new HashMap<String, Analyzer>();
+      fields.put("name",  null);
+      fields.put("email", new KeywordAnalyzer());
+      fields.put("address", new MyCharacterAnalyzer());
+      service.createIndex("analyzerIndex", "Person", fields);
+    }
 
     // create an index using standard analyzer on region /Person
     service.createIndexFactory().setFields("name", "email", "address", "revenue").create("personIndex", "Person");
     PersonRegion = ((Cache)cache).createRegionFactory(shortcut).create("Person");
 
-    // create an index using standard analyzer on region /Customer
-    service.createIndexFactory().addField("name").addField("symbol").addField("revenue").addField("SSN")
-    .addField("contact.name").addField("contact.email").addField("contact.address").addField("contact.homepage.title")
-    .addField(LuceneService.REGION_VALUE_FIELD)
-    .create("customerIndex", "Customer");
-    CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
+    if (instanceType != CALCULATE_SIZE) {
+      // create an index using standard analyzer on region /Customer
+      service.createIndexFactory().addField("name").addField("symbol").addField("revenue").addField("SSN")
+      .addField("contact.name").addField("contact.email").addField("contact.address").addField("contact.homepage.title")
+      .addField(LuceneService.REGION_VALUE_FIELD)
+      .create("customerIndex", "Customer");
+      CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
 
-    // create an index using standard analyzer on region /Page
-    service.createIndexFactory().setFields("id", "title", "content").create("pageIndex", "Page");
-    PageRegion = ((Cache)cache).createRegionFactory(shortcut).create("Page");
+      // create an index using standard analyzer on region /Page
+      service.createIndexFactory().setFields("id", "title", "content").create("pageIndex", "Page");
+      PageRegion = ((Cache)cache).createRegionFactory(shortcut).create("Page");
+    }
   }
 
   public void doQuery() throws LuceneQueryException {
@@ -367,20 +380,31 @@ public class Main {
     System.out.println("Region "+PersonRegion.getFullPath()+" has "+ENTRY_COUNT
         + " entries, size is "+dataRegionSize/1000+"KB, index size is "+indexRegionSize/1000+"KB");
   }
+  
+  private void doDump(String indexName, String regionName) {
+    LuceneIndexForPartitionedRegion index = (LuceneIndexForPartitionedRegion)service.getIndex(indexName, regionName);
+    if (index == null) {
+      return;
+    }
+    index.dumpFiles("dump"+indexName);
+  }
 
   private void feed(int count) {
     for (int i=0; i<count; i++) {
       PersonRegion.put("key"+i, new Person(i));
     }
-    for (int i=0; i<count; i++) {
-      CustomerRegion.put("key"+i, new Customer(i));
-    }
-    for (int i=0; i<count; i++) {
-      PageRegion.put("key"+i, new Page(i));
-    }
+    
+    if (instanceType != CALCULATE_SIZE) {
+      for (int i=0; i<count; i++) {
+        CustomerRegion.put("key"+i, new Customer(i));
+      }
+      for (int i=0; i<count; i++) {
+        PageRegion.put("key"+i, new Page(i));
+      }
 
-    insertAJson(PersonRegion);
-    insertNestObjects(CustomerRegion);
+      insertAJson(PersonRegion);
+      insertNestObjects(CustomerRegion);
+    }
   }
 
   private void insertPrimitiveTypeValue(Region region) {
