@@ -146,8 +146,10 @@ public class Main {
           prog.createCache(serverPort);
           prog.createIndexAndRegions(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT);        
 
+          long then = System.currentTimeMillis();
           prog.feed(ENTRY_COUNT);
           prog.waitUntilFlushed("personIndex", "Person");
+          System.out.println("Total wait time is:"+(System.currentTimeMillis() - then));
           
           // calculate region size
           prog.calculateSize("personIndex", "Person");
@@ -352,7 +354,7 @@ public class Main {
     do {
       status = service.waitUntilFlushed(indexName, regionName, 60000, TimeUnit.MILLISECONDS);
     } while (status == false);
-    System.out.println("Total wait time is:"+(System.currentTimeMillis() - then));
+    System.out.println("wait time after feed is:"+(System.currentTimeMillis() - then));
   }
 
 //  private void defineIndexAndRegion(String indexName, String regionName, RegionShortcut regionType, String...fields) {
