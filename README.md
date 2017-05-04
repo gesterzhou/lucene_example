@@ -33,6 +33,8 @@ The simplest way to run is run a standalone test:
 
 cd ./lucene_example
 ./gradlew run
+or
+./gradlew run -PappArgs="[1, false]"
 
 Part-0: preparation
 

@@ -50,12 +50,12 @@ dependencies {
     // compile "org.apache.geode:geode-lucene:1.0.0-incubating"
 
     // If using support version (gemfire 9.0.1)
-    compile "io.pivotal.gemfire:geode-core:9.1.0"
-    compile "io.pivotal.gemfire:geode-lucene:9.1.0"
+    // compile "io.pivotal.gemfire:geode-core:9.1.0"
+    // compile "io.pivotal.gemfire:geode-lucene:9.1.0"
 
     // If using develop version (geode 1.2.0)
-    // compile "org.apache.geode:geode-core:1.2.0-SNAPSHOT"
-    // compile "org.apache.geode:geode-lucene:1.2.0-SNAPSHOT"
+    compile "org.apache.geode:geode-core:1.2.0-SNAPSHOT"
+    compile "org.apache.geode:geode-lucene:1.2.0-SNAPSHOT"
 
     // third party 
     compile "org.springframework.shell:spring-shell:1.1.0.RELEASE"

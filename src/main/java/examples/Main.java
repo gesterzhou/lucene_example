@@ -267,6 +267,15 @@ public class Main {
     System.out.println("\nCompare with standard analyzer");
     queryByStringQueryParser("personIndex", "Person", "address:97763", 0);
 
+    System.out.println("\nFuzzy search examples:");
+    queryByStringQueryParser("personIndex", "Person", "name:Tom999*", 0);
+    queryByStringQueryParser("personIndex", "Person", "name:Tom999~", 0);
+    queryByStringQueryParser("personIndex", "Person", "name:Tom999~0.8", 0);
+
+    System.out.println("\nProximity search examples:");
+    queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~1", 0);
+    queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~2", 0);
+
     System.out.println("\nQuery with composite condition");
     queryByStringQueryParser("analyzerIndex", "Person", "name:Tom999* OR address:97763", 0);
 
