@@ -1,5 +1,6 @@
 package examples;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +22,7 @@ import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.util.CharTokenizer;
 import org.apache.lucene.queryparser.classic.ParseException;
 
+import loader.Loader;
 import objectsize.ObjectSizer;
 
 import org.apache.geode.cache.Cache;
@@ -76,7 +78,12 @@ public class Main {
   final static int CLIENT = 3;
   final static int SERVER_WITH_CLUSTER_CONFIG = 4;
   final static int CALCULATE_SIZE = 5;
+  final static int LOAD_USER_DATA = 6;
   static int instanceType = CALCULATE_SIZE;
+  
+  private static final String FILE_LOCATION = "/Users/gzhou/git3/geode311demo/bin/311-sample.csv";
+  Region ServiceRequestRegion;
+  Loader loader;
   
   /* Usage: ~ [1|2|3|4 [isUsingLocator]]
    * 1: server with feeder
@@ -84,7 +91,7 @@ public class Main {
    * 3: client
    * 4: server with feeder using cluster config
    */
-  public static void main(final String[] args) throws LuceneQueryException, IOException, InterruptedException {
+  public static void main(final String[] args) throws LuceneQueryException, IOException, InterruptedException, java.text.ParseException {
     Main prog = new Main();
     try {
       if (args.length > 0) {
@@ -154,6 +161,15 @@ public class Main {
           // calculate region size
           prog.calculateSize("personIndex", "Person");
           prog.doDump("personIndex", "Person");
+          break;
+
+        case LOAD_USER_DATA:
+          prog.createCache(serverPort);
+          prog.createIndexAndRegionForServiceRequest(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT);   
+          prog.waitUntilFlushed("serviceRequestIndex", "ServiceRequest");
+
+          prog.doQueryServiceRequest();
+          break;
       }
       
       System.out.println("Press any key to exit");
@@ -162,6 +178,7 @@ public class Main {
     } finally {
       prog.stopServer();
     }
+    return;
   }
 
   private void createClientCache() {
@@ -256,6 +273,31 @@ public class Main {
       service.createIndexFactory().setFields("id", "title", "content").create("pageIndex", "Page");
       PageRegion = ((Cache)cache).createRegionFactory(shortcut).create("Page");
     }
+  }
+
+  private void createIndexAndRegionForServiceRequest(RegionShortcut shortcut) throws FileNotFoundException, java.text.ParseException {
+    service.createIndexFactory().addField("uniqueKey").addField("createdDate")
+    .addField("closedDate").addField("agency").addField("agencyName").addField("complaintType")
+    .addField("descriptor").addField("locationType").addField("incidentZip").addField("incidentAddress")
+    .addField("streetName").addField("crossStreet_1").addField("crossStreet_2").addField("intersectionStreet_1")
+    .addField("intersectionStreet_2").addField("addressType").addField("city").addField("landmark")
+    .addField("facilityType").addField("status").addField("dueDate").addField("resolutionDescription")
+    .addField("resolutionActionUpdateDate").addField("communityBoard").addField("borough")
+    .addField("x_coordinate").addField("y_coordinate").addField("parkFacilityName")
+    .addField("parkBorough").addField("schoolName").addField("schoolNumber").addField("schoolRegion")
+    .addField("schoolCode").addField("schoolPhoneNumber").addField("schoolAddress")
+    .addField("schoolCity").addField("schoolState").addField("schoolZip").addField("schoolNotFound")
+    .addField("schoolOrCityWideComplaint").addField("vehicleType").addField("taxiCompanyBorough")
+    .addField("taxiPickUpLocation").addField("bridgeHighwayName").addField("bridgeHighwayDirection")
+    .addField("roadRamp").addField("bridgeHighwaySegment").addField("garageLotName").addField("ferryDirection")
+    .addField("ferryTerminalName").addField("latitude").addField("longitude").addField("location")
+    .create("serviceRequestIndex", "ServiceRequest");
+    ServiceRequestRegion = ((Cache)cache).createRegionFactory(shortcut).create("ServiceRequest");
+    loader = new Loader(FILE_LOCATION, ServiceRequestRegion);
+  }
+  
+  public void doQueryServiceRequest() throws LuceneQueryException {
+    queryByStringQueryParser("serviceRequestIndex", "ServiceRequest", "agencyName:Police", 10);
   }
 
   public void doQuery() throws LuceneQueryException {
@@ -496,7 +538,7 @@ public class Main {
       return null;
     }
 
-    PageableLuceneQueryResults<String, Object> results = query.findPages();
+    PageableLuceneQueryResults<Object, Object> results = query.findPages();
     if (results.size() >0 ) {
       System.out.println("Search found "+results.size()+" rows in "+regionName);
     }
