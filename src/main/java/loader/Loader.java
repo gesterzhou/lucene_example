@@ -45,10 +45,9 @@ public class Loader {
       } else {
         line = convertCommaInString(line);
         String fields[] = line.split(",");
-        System.out.println(Arrays.toString(fields));
+//        System.out.println(Arrays.toString(fields));
         Optional<ServiceRequest> result = parser.parseLine(fields);
         region.put(result.get().getUniqueKey(), result.get());
-//        region.put(Integer.toString(result.get().getUniqueKey()), result.get());
       }
       count++;
     }

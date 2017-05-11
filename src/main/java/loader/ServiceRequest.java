@@ -24,17 +24,17 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement(name = "ServiceRequest")
 public class ServiceRequest implements Serializable {
 
-  public ServiceRequest setUniqueKey(final int uniqueKey) {
+  public ServiceRequest setUniqueKey(final long uniqueKey) {
     this.uniqueKey = uniqueKey;
     return this;
   }
 
-  public ServiceRequest setCreatedDate(final int createdDate) {
+  public ServiceRequest setCreatedDate(final long createdDate) {
     this.createdDate = createdDate;
     return this;
   }
 
-  public ServiceRequest setClosedDate(final int closedDate) {
+  public ServiceRequest setClosedDate(final long closedDate) {
     this.closedDate = closedDate;
     return this;
   }
@@ -124,7 +124,7 @@ public class ServiceRequest implements Serializable {
     return this;
   }
 
-  public ServiceRequest  setDueDate(final int dueDate) {
+  public ServiceRequest  setDueDate(final long dueDate) {
     this.dueDate = dueDate;
     return this;
   }
@@ -134,7 +134,7 @@ public class ServiceRequest implements Serializable {
     return this;
   }
 
-  public ServiceRequest setResolutionActionUpdateDate(final int resolutionActionUpdateDate) {
+  public ServiceRequest setResolutionActionUpdateDate(final long resolutionActionUpdateDate) {
     this.resolutionActionUpdateDate = resolutionActionUpdateDate;
     return this;
   }
@@ -289,9 +289,9 @@ public class ServiceRequest implements Serializable {
     return this;
   }
 
-  private int  uniqueKey;
-  private int  createdDate;
-  private int  closedDate;
+  private long  uniqueKey;
+  private long  createdDate;
+  private long  closedDate;
   private String  agency,
           agencyName,
           complaintType,
@@ -309,9 +309,9 @@ public class ServiceRequest implements Serializable {
           landmark,
           facilityType,
           status;
-  private int    dueDate;
+  private long    dueDate;
   private String  resolutionDescription;
-  private int    resolutionActionUpdateDate;
+  private long    resolutionActionUpdateDate;
   private String  communityBoard,
           borough;
   private float   x_coordinate, y_coordinate;
@@ -344,15 +344,15 @@ public class ServiceRequest implements Serializable {
 
 
 
-  public int getUniqueKey() {
+  public long getUniqueKey() {
     return uniqueKey;
   }
 
-  public int getCreatedDate() {
+  public long getCreatedDate() {
     return createdDate;
   }
 
-  public int getClosedDate() {
+  public long getClosedDate() {
     return closedDate;
   }
 
@@ -424,7 +424,7 @@ public class ServiceRequest implements Serializable {
     return status;
   }
 
-  public int getDueDate() {
+  public long getDueDate() {
     return dueDate;
   }
 
@@ -432,7 +432,7 @@ public class ServiceRequest implements Serializable {
     return resolutionDescription;
   }
 
-  public int getResolutionActionUpdateDate() {
+  public long getResolutionActionUpdateDate() {
     return resolutionActionUpdateDate;
   }
 
@@ -563,9 +563,9 @@ public class ServiceRequest implements Serializable {
 
   public ServiceRequest() {};
 
-  public ServiceRequest(final int uniqueKey,
-                        final int createdDate,
-                        final int closedDate,
+  public ServiceRequest(final long uniqueKey,
+                        final long createdDate,
+                        final long closedDate,
                         final String agency,
                         final String agencyName,
                         final String complaintType,
@@ -583,9 +583,9 @@ public class ServiceRequest implements Serializable {
                         final String landmark,
                         final String facilityType,
                         final String status,
-                        final int dueDate,
+                        final long dueDate,
                         final String resolutionDescription,
-                        final int resolutionActionUpdateDate,
+                        final long resolutionActionUpdateDate,
                         final String communityBoard,
                         final String borough,
                         final float x_coordinate,

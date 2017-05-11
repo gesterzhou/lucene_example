@@ -25,13 +25,13 @@ public class ServiceRequestParser implements Parser<ServiceRequest> {
 
   private static final String DATE_FORMAT = "MM/dd/yyyy HH:mm:ss a";
 
-  protected int convertStringDateToInt(final String inputDate) throws ParseException {
+  protected long convertStringDateToLong(final String inputDate) throws ParseException {
     SimpleDateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
     if (inputDate.isEmpty()) {
       return 0;
     }
     Date date = formatter.parse(inputDate);
-    return (int)date.getTime();
+    return date.getTime();
   }
 
   public boolean hasHeader() { return true; }
@@ -40,8 +40,8 @@ public class ServiceRequestParser implements Parser<ServiceRequest> {
     if (line.length > 0) {
       ServiceRequest serviceRequest = new ServiceRequest();
       serviceRequest.setUniqueKey(Integer.parseInt(line[0]));
-      serviceRequest.setCreatedDate(convertStringDateToInt(line[1]));
-      serviceRequest.setClosedDate(convertStringDateToInt(line[2]));
+      serviceRequest.setCreatedDate(convertStringDateToLong(line[1]));
+      serviceRequest.setClosedDate(convertStringDateToLong(line[2]));
       serviceRequest.setAgency(line[3]);
       serviceRequest.setAgencyName(line[4]);
       serviceRequest.setComplaintType(line[5]);
@@ -59,9 +59,9 @@ public class ServiceRequestParser implements Parser<ServiceRequest> {
       serviceRequest.setLandmark(line[17]);
       serviceRequest.setFacilityType(line[18]);
       serviceRequest.setStatus(line[19]);
-      serviceRequest.setDueDate(convertStringDateToInt(line[20]));
+      serviceRequest.setDueDate(convertStringDateToLong(line[20]));
       serviceRequest.setResolutionDescription(line[21]);
-      serviceRequest.setResolutionActionUpdateDate(convertStringDateToInt(line[22]));
+      serviceRequest.setResolutionActionUpdateDate(convertStringDateToLong(line[22]));
       serviceRequest.setCommunityBoard(line[23]);
       serviceRequest.setBorough(line[24]);
       serviceRequest.setX_coordinate(Float.parseFloat(line[25]));
