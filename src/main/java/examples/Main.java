@@ -251,7 +251,7 @@ public class Main {
     if (instanceType != CALCULATE_SIZE) {
       // create an index using several analyzers on region /Person
       Map<String, Analyzer> fields = new HashMap<String, Analyzer>();
-      fields.put("name",  null);
+      fields.put("name",  new DoubleMetaphoneAnalyzer());
       fields.put("email", new KeywordAnalyzer());
       fields.put("address", new MyCharacterAnalyzer());
       service.createIndex("analyzerIndex", "Person", fields);
@@ -348,6 +348,19 @@ public class Main {
         }
       }
     }
+
+    System.out.println("Regular query on soundex analyzer: double metaphone");
+    insertSoundexNames(PersonRegion);
+    try {
+      waitUntilFlushed("personIndex", "Person");
+    }
+    catch (InterruptedException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    queryByStringQueryParser("analyzerIndex", "Person", "name:Stephen", 5);
+    
+    queryByStringQueryParser("analyzerIndex", "Person", "name:Ste*", 5);
   }
   
   public void doClientFunction() {
@@ -460,6 +473,16 @@ public class Main {
     }
   }
 
+  private void insertSoundexNames(Region region) {
+    region.put("soundex1", new Person("Stefan", "a@b.com", "address1"));
+    region.put("soundex2", new Person("Steph", "a@b.com", "address1"));
+    region.put("soundex3", new Person("Stephen", "a@b.com", "address1"));
+    region.put("soundex4", new Person("Steve", "a@b.com", "address1"));
+    region.put("soundex5", new Person("Steven", "a@b.com", "address1"));
+    region.put("soundex6", new Person("Stove", "a@b.com", "address1"));
+    region.put("soundex7", new Person("Stuffin", "a@b.com", "address1"));
+  }
+  
   private void insertPrimitiveTypeValue(Region region) {
     region.put("primitiveInt1", 123);
     region.put("primitiveInt2", "223");
