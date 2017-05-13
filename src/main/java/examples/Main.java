@@ -81,7 +81,7 @@ public class Main {
   final static int LOAD_USER_DATA = 6;
   static int instanceType = CALCULATE_SIZE;
   
-  private static final String FILE_LOCATION = "/Users/gzhou/git3/geode311demo/bin/311-sample.csv";
+  private static String FILE_LOCATION = "./311-sample.csv";
   Region ServiceRequestRegion;
   Loader loader;
   
@@ -99,6 +99,9 @@ public class Main {
       }
       if (args.length > 1) {
         useLocator = Boolean.valueOf(args[1]);
+      }
+      if (args.length > 2) {
+        FILE_LOCATION = args[2];
       }
       serverPort += instanceType;
       

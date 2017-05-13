@@ -76,7 +76,7 @@ public class LuceneSearchIndexFunction<K, V> extends FunctionAdapter implements 
             + queryInfo.getRegionPath());
       }
       final LuceneQuery<K, V> query = luceneService.createLuceneQueryFactory()
-          .setResultLimit(queryInfo.getLimit()).create(queryInfo.getIndexName(),
+          .setLimit(queryInfo.getLimit()).create(queryInfo.getIndexName(),
               queryInfo.getRegionPath(), queryInfo.getQueryString(), queryInfo.getDefaultField());
       if (queryInfo.getKeysOnly()) {
 //        query.findKeys().forEach(key -> result.add(new LuceneSearchResults(key.toString())));
