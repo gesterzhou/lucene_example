@@ -36,10 +36,67 @@ cd ./lucene_example
 or
 ./gradlew run -PappArgs="[1, false]"
 
+There're following standalone tests:
+1) stand alone server with feeder
+./gradlew run -PappArgs="[1, false]"
+
+2) server only (with locator), mainly for testing recovery from disk
+./gradlew run -PappArgs="[2, true]"
+
+3) client
+./gradlew run -PappArgs="[3]"
+
+4) server with cluster config, need to start a gfsh to create region and index
+./gradlew run -PappArgs="[4, true]"
+
+5) calculate size: create index and calculate region size
+./gradlew run
+
+6) load user data: load a small csv file with 6 records, do a query
+./gradlew run -PappArgs="[6, false]"
+or
+./gradlew run -PappArgs="[6, false, '/Users/gzhou/git3/geode311demo/bin/311-sample.csv']"
+
 Part-0: preparation
 
-- download gemfire 9.0.1 from https://network.pivotal.io/products/pivotal-gemfire
-- Unzip it to $HOME/pivotal-gemfire-9.0.1
+You can use either gemfire or geode
+If you are using gemfire 9.0.4:
+- download gemfire 9.0.4 from https://network.pivotal.io/products/pivotal-gemfire
+- Unzip it to $HOME/pivotal-gemfire-9.0.4
+
+If you are using geode 1.2:
+git clone https://git-wip-us.apache.org/repos/asf/geode.git
+cd geode
+./gradlew build -Dskip.tests=true install
+
+Note:
+Since the demo used nested object, you have to apply following patch into geode:
+diff --git a/geode-assembly/build.gradle b/geode-assembly/build.gradle
+index a4f0c69ee..6ab9396f3 100755
+--- a/geode-assembly/build.gradle
++++ b/geode-assembly/build.gradle
+@@ -176,6 +176,8 @@ def cp = {
+         it.contains('lucene-analyzers-common') ||
+         it.contains('lucene-core') ||
+         it.contains('lucene-queries') ||
++        it.contains('lucene-join') ||
++        it.contains('lucene-grouping') ||
+         it.contains('lucene-queryparser')
+       }
+     }
+diff --git a/geode-lucene/build.gradle b/geode-lucene/build.gradle
+index 74de7a6a8..360ab55fb 100644
+--- a/geode-lucene/build.gradle
++++ b/geode-lucene/build.gradle
+@@ -22,6 +22,8 @@ dependencies {
+     compile 'org.apache.lucene:lucene-analyzers-common:' + project.'lucene.version'
+     compile 'org.apache.lucene:lucene-core:' + project.'lucene.version'
+     compile 'org.apache.lucene:lucene-queries:' + project.'lucene.version'
++    compile 'org.apache.lucene:lucene-join:' + project.'lucene.version'
++    compile 'org.apache.lucene:lucene-grouping:' + project.'lucene.version'
+     compile ('org.apache.lucene:lucene-queryparser:' + project.'lucene.version') {
+       exclude module: 'lucene-sandbox'
+     }
 
 You might need 3 copies to run following members:
 
@@ -52,7 +109,7 @@ You might need 3 copies to run following members:
 
 Do following steps for each of the 3 copies:
 
-- export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+- export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 - Source code can be got from: 
   git clone git@github.com:gesterzhou/lucene_example.git
 - cd lucene_example
@@ -64,7 +121,7 @@ Part-1: create lucene index from scratch in gfsh
 Step 1: start locator, create server
 ------------------------------------
 cd $HOME/lucene_demo/locator
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 $GEMFIRE/bin/gfsh
 
 gfsh>start locator --name=locator1 --port=12345
@@ -167,7 +224,7 @@ Part-2: A more complex example using gfsh cluster configuration
 step 1: Start server in gfsh. Create index, region and save into cluster config
 ------------------------------------------------------------------
 cd $HOME/lucene_demo/locator
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 $GEMFIRE/bin/gfsh
 
 start locator --name=locator1 --port=12345
@@ -202,7 +259,7 @@ personIndex   | /Person     | [name, email, address, revenue]                   
 step 2: start server with feeder
 --------------------------------
 cd $HOME/lucene_demo/server/lucene_example
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 ./gradlew run -PappArgs="[4, true]"
 Note: It will only create cache and get region and index definition from clusterconfiguration saved in locator.
 
@@ -264,7 +321,7 @@ Note: found a lot due to search by "example.com", because personIndex is using s
 step 4: query from client
 -------------------------
 cd $HOME/lucene_demo/client/lucene_example
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 ./gradlew run -PappArgs="[3]"
 
 step 5: view from REST URL
@@ -295,20 +352,20 @@ Part-3: recover from disk
 step 1: start locator 
 ---------------------
 cd $HOME/lucene_demo/locator
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 $GEMFIRE/bin/gfsh
 gfsh>start locator --name=locator1 --port=12345
 
 step 2: start a server with feeder
 ----------------------------------
 cd $HOME/lucene_demo/server/lucene_example
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 ./gradlew run -PappArgs="[1, true]"
 
 step 3: start server only member to recover from disk
 -----------------------------------------------------
 cd $HOME/lucene_demo/server/lucene_example
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 ./gradlew run -PappArgs="[2, true]"
 It will recover from disk for both data and index.
 
@@ -323,7 +380,7 @@ step 4: start a client
 ----------------------
 
 cd $HOME/lucene_demo/client/lucene_example
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 ./gradlew run -PappArgs="[3]"
 
 step 5: show index definition including analyzers and how index usage in stats
@@ -345,20 +402,20 @@ Part-4: call function from client and REST
 step 1: start locator 
 ---------------------
 cd $HOME/lucene_demo/locator
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 $GEMFIRE/bin/gfsh
 gfsh>start locator --name=locator1 --port=12345
 
 step 2: start server with feeder
 --------------------------------
 cd $HOME/lucene_demo/server/lucene_example
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 ./gradlew run -PappArgs="[1, true]"
 
 step 3: run a client
 --------------------
 cd $HOME/lucene_demo/client/lucene_example
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.1
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 ./gradlew run -PappArgs="[3]"
 
 The client will call function "LuceneSearchIndexFunction" at server and display results at client.
