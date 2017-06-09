@@ -16,7 +16,7 @@ Following gemfire lucene features are tested:
 - start a REST server to show the contents
 - REST API to do lucene search (TBD)
 - From a client (or native client) to run lucene query through calling a function execution
-- soundex query (TBD)
+- soundex query
 
 It can be run standalone, or in a cluster contains server 
 with feeder, server only, client. Both server with feeder 

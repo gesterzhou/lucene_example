@@ -70,8 +70,11 @@ dependencies {
     compile "org.eclipse.jetty:jetty-xml:9.3.6.v20151106"
     compile "org.eclipse.jetty:jetty-servlet:9.3.6.v20151106"
 
+    // for nested object
     compile "org.apache.lucene:lucene-join:6.4.1"
     compile "org.apache.lucene:lucene-grouping:6.4.1"
+
+    // for soundex analyzer
     compile "org.apache.lucene:lucene-analyzers-phonetic:6.4.1"
     compile "commons-codec:commons-codec:1.10"
 
