@@ -1,18 +1,18 @@
 diff --git a/geode-assembly/build.gradle b/geode-assembly/build.gradle
-index 1c95927..44c891e 100755
+index 19a73f324..b39f7e6df 100755
 --- a/geode-assembly/build.gradle
 +++ b/geode-assembly/build.gradle
-@@ -175,6 +175,8 @@ def cp = {
+@@ -194,6 +194,8 @@ def cp = {
          it.contains('lucene-analyzers-common') ||
          it.contains('lucene-core') ||
          it.contains('lucene-queries') ||
 +        it.contains('lucene-join') ||
 +        it.contains('lucene-grouping') ||
-         it.contains('lucene-queryparser')
-       }
-     }
+         it.contains('lucene-queryparser') ||
+ 
+         // dependencies from geode-protobuf
 diff --git a/geode-assembly/src/test/resources/expected_jars.txt b/geode-assembly/src/test/resources/expected_jars.txt
-index a9a5a79..092411d 100644
+index 05f583459..fc18ab4ad 100644
 --- a/geode-assembly/src/test/resources/expected_jars.txt
 +++ b/geode-assembly/src/test/resources/expected_jars.txt
 @@ -46,6 +46,8 @@ lucene-analyzers-common
@@ -24,15 +24,8 @@ index a9a5a79..092411d 100644
  mx4j
  mx4j-remote
  mx4j-tools
-@@ -85,4 +87,4 @@ springfox-spring-web
- springfox-swagger
- springfox-swagger-common
- springfox-swagger-ui
--swagger-models
-\ No newline at end of file
-+swagger-models
 diff --git a/geode-lucene/build.gradle b/geode-lucene/build.gradle
-index 8545200..33d6a2b 100644
+index 74de7a6a8..360ab55fb 100644
 --- a/geode-lucene/build.gradle
 +++ b/geode-lucene/build.gradle
 @@ -22,6 +22,8 @@ dependencies {
@@ -44,30 +37,8 @@ index 8545200..33d6a2b 100644
      compile ('org.apache.lucene:lucene-queryparser:' + project.'lucene.version') {
        exclude module: 'lucene-sandbox'
      }
-diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/LuceneResultStruct.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/LuceneResultStruct.java
-index b922185..7139c58 100644
---- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/LuceneResultStruct.java
-+++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/LuceneResultStruct.java
-@@ -14,6 +14,8 @@
-  */
- package org.apache.geode.cache.lucene;
- 
-+import java.io.Serializable;
-+
- import org.apache.geode.annotations.Experimental;
- 
- /**
-@@ -22,7 +24,7 @@ import org.apache.geode.annotations.Experimental;
-  * 
-  */
- @Experimental
--public interface LuceneResultStruct<K, V> {
-+public interface LuceneResultStruct<K, V> extends Serializable {
- 
-   /**
-    * Return key of the entry
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java
-index f356bef..597473a 100644
+index f356bef6b..597473aed 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java
 @@ -15,6 +15,7 @@
@@ -117,7 +88,7 @@ index f356bef..597473a 100644
        stats.endUpdate(start);
      }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java
-index b0a98a1..889e3f7 100644
+index b0a98a1e8..889e3f7c2 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java
 @@ -14,8 +14,14 @@
@@ -255,7 +226,7 @@ index b0a98a1..889e3f7 100644
 +  }
  }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/LuceneSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/LuceneSerializer.java
-index fa38f47..1c92978 100644
+index fa38f4730..1c929783d 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/LuceneSerializer.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/LuceneSerializer.java
 @@ -15,6 +15,8 @@
@@ -275,7 +246,7 @@ index fa38f47..1c92978 100644
 +  Collection<Document> toDocuments(Object value);
  }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PdxLuceneSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PdxLuceneSerializer.java
-index f34390c..994f00c 100644
+index f34390c65..994f00c25 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PdxLuceneSerializer.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PdxLuceneSerializer.java
 @@ -18,6 +18,7 @@ package org.apache.geode.cache.lucene.internal.repository.serializer;
@@ -298,7 +269,7 @@ index f34390c..994f00c 100644
 +  }
  }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PrimitiveSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PrimitiveSerializer.java
-index cf644a8..a47c696 100644
+index cf644a8bc..a47c69624 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PrimitiveSerializer.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PrimitiveSerializer.java
 @@ -14,6 +14,7 @@
@@ -321,7 +292,7 @@ index cf644a8..a47c696 100644
 +  }
  }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionLuceneSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionLuceneSerializer.java
-index 07a66fb..5ab95a3 100644
+index 07a66fb0a..5ab95a371 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionLuceneSerializer.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionLuceneSerializer.java
 @@ -18,7 +18,10 @@ package org.apache.geode.cache.lucene.internal.repository.serializer;
@@ -407,7 +378,7 @@ index 07a66fb..5ab95a3 100644
 +  }
  }
 diff --git a/geode-lucene/src/test/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionFieldMapperJUnitTest.java b/geode-lucene/src/test/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionFieldMapperJUnitTest.java
-index 3e0fe3f..e7aad0c 100644
+index 3e0fe3ff8..e7aad0c5d 100644
 --- a/geode-lucene/src/test/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionFieldMapperJUnitTest.java
 +++ b/geode-lucene/src/test/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionFieldMapperJUnitTest.java
 @@ -32,8 +32,8 @@ public class ReflectionFieldMapperJUnitTest {
