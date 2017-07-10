@@ -64,7 +64,7 @@ index b9f4de898..59d076e0e 100755
      if (repo != null && !repo.isClosed()) {
        return repo;
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java
-index f356bef6b..597473aed 100644
+index f356bef6b..67073171c 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java
 @@ -15,6 +15,7 @@
@@ -94,27 +94,27 @@ index f356bef6b..597473aed 100644
 -      SerializerUtil.addKey(key, doc);
 -      serializer.toDocument(value, doc);
 -      writer.updateDocument(SerializerUtil.getKeyTerm(doc), doc);
-+//      Document doc = new Document();
-+//      SerializerUtil.addKey(key, doc);
-+//      serializer.toDocument(value, doc);
-+//      writer.updateDocument(SerializerUtil.getKeyTerm(doc), doc);
-+      ArrayList<Document> documents = (ArrayList<Document>)serializer.toDocuments(value);
++      // Document doc = new Document();
++      // SerializerUtil.addKey(key, doc);
++      // serializer.toDocument(value, doc);
++      // writer.updateDocument(SerializerUtil.getKeyTerm(doc), doc);
++      ArrayList<Document> documents = (ArrayList<Document>) serializer.toDocuments(value);
 +      if (documents == null) {
 +        // PDX
 +        return;
 +      }
-+      for (Document doc:documents) {
++      for (Document doc : documents) {
 +        SerializerUtil.addKey(key, doc);
 +      }
-+      Document lastDoc = documents.get(documents.size()-1);
-+//      SerializerUtil.addKey(key, lastDoc);
-+//      System.out.println("GGG:"+documents);
++      Document lastDoc = documents.get(documents.size() - 1);
++      // SerializerUtil.addKey(key, lastDoc);
++      // System.out.println("GGG:"+documents);
 +      writer.updateDocuments(SerializerUtil.getKeyTerm(lastDoc), documents);
      } finally {
        stats.endUpdate(start);
      }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java
-index b0a98a1e8..889e3f7c2 100644
+index b0a98a1e8..f8d34df58 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java
 @@ -14,8 +14,14 @@
@@ -141,7 +141,7 @@ index b0a98a1e8..889e3f7c2 100644
        new CopyOnWriteWeakHashMap<Class<?>, LuceneSerializer>();
  
    private static final Logger logger = LogService.getLogger();
-@@ -86,22 +92,103 @@ public class HeterogeneousLuceneSerializer implements LuceneSerializer {
+@@ -86,22 +92,105 @@ public class HeterogeneousLuceneSerializer implements LuceneSerializer {
      }
    }
  
@@ -155,12 +155,12 @@ index b0a98a1e8..889e3f7c2 100644
 +      definedFieldsForEachNestedClass.put(clazz, definedFieldNamesForParent);
 +    }
 +
-+    HashMap<String, HashSet<String>> parentChildFieldMapping =  new HashMap();
-+    for (String f:fields) {
++    HashMap<String, HashSet<String>> parentChildFieldMapping = new HashMap();
++    for (String f : fields) {
 +      int firstDot = f.indexOf(".");
 +      if (firstDot != -1) {
 +        String parentFieldName = f.substring(0, firstDot);
-+        String childFieldName = f.substring(firstDot+1);
++        String childFieldName = f.substring(firstDot + 1);
 +        HashSet<String> childFieldSet = parentChildFieldMapping.get(parentFieldName);
 +        if (childFieldSet == null) {
 +          childFieldSet = new HashSet<String>();
@@ -174,21 +174,22 @@ index b0a98a1e8..889e3f7c2 100644
 +      }
 +    }
 +
-+    for (Map.Entry<String, HashSet<String>> entry:parentChildFieldMapping.entrySet()) {
++    for (Map.Entry<String, HashSet<String>> entry : parentChildFieldMapping.entrySet()) {
 +      try {
 +        String parentFieldName = entry.getKey();
 +        HashSet<String> childFieldSet = entry.getValue();
 +        String[] childFields = new String[childFieldSet.size()];
 +        childFieldSet.toArray(childFields);
 +        checkOneNestedField(value, parentFieldName, childFields);
-+      }
-+      catch (Exception e) {
++      } catch (Exception e) {
 +        e.printStackTrace();
 +      }
 +    }
 +  }
 +
-+  private void checkOneNestedField(Object parentValue, String parentField, String[] childFields) throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException, SecurityException {
++  private void checkOneNestedField(Object parentValue, String parentField, String[] childFields)
++      throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException,
++      SecurityException {
 +    // now check if there's grandchild in nestedFields
 +    Class<?> parentClazz = parentValue.getClass();
 +    Field field = parentClazz.getDeclaredField(parentField);
@@ -212,7 +213,7 @@ index b0a98a1e8..889e3f7c2 100644
      } else {
 -      Class<?> clazz = value.getClass();
 -      LuceneSerializer mapper = mappers.get(clazz);
-+//      Class<?> clazz = value.getClass();
++      // Class<?> clazz = value.getClass();
 +      LuceneSerializer mapper = mappers.get(value.getClass());
        if (mapper == null) {
 -        mapper = new ReflectionLuceneSerializer(clazz, indexedFields);
@@ -220,7 +221,8 @@ index b0a98a1e8..889e3f7c2 100644
 +        // only do pre-processing when mapper==null
 +        // it will find all the nested classes for the index
 +        preProcessingForNestObjects(value, indexedFields);
-+        for (Map.Entry<Class<?>, HashSet<String>> entry:definedFieldsForEachNestedClass.entrySet()) {
++        for (Map.Entry<Class<?>, HashSet<String>> entry : definedFieldsForEachNestedClass
++            .entrySet()) {
 +          Class<?> clazz = entry.getKey();
 +          if (mappers.get(clazz) == null) {
 +            HashSet<String> childFieldSet = entry.getValue();
@@ -252,7 +254,7 @@ index b0a98a1e8..889e3f7c2 100644
 +  }
  }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/LuceneSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/LuceneSerializer.java
-index fa38f4730..1c929783d 100644
+index fa38f4730..1fc37253d 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/LuceneSerializer.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/LuceneSerializer.java
 @@ -15,6 +15,8 @@
@@ -268,7 +270,7 @@ index fa38f4730..1c929783d 100644
     */
    void toDocument(Object value, Document doc);
  
-+  //Proposed method
++  // Proposed method
 +  Collection<Document> toDocuments(Object value);
  }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PdxLuceneSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/PdxLuceneSerializer.java
@@ -318,7 +320,7 @@ index cf644a8bc..a47c69624 100644
 +  }
  }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionLuceneSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionLuceneSerializer.java
-index 07a66fb0a..5ab95a371 100644
+index 07a66fb0a..a13a67bf3 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionLuceneSerializer.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionLuceneSerializer.java
 @@ -18,7 +18,10 @@ package org.apache.geode.cache.lucene.internal.repository.serializer;
@@ -332,7 +334,7 @@ index 07a66fb0a..5ab95a371 100644
  import java.util.Set;
  
  import org.apache.logging.log4j.Logger;
-@@ -33,10 +36,12 @@ import org.apache.geode.internal.logging.LogService;
+@@ -33,10 +36,13 @@ import org.apache.geode.internal.logging.LogService;
  class ReflectionLuceneSerializer implements LuceneSerializer {
  
    private Field[] fields;
@@ -341,12 +343,13 @@ index 07a66fb0a..5ab95a371 100644
    private static final Logger logger = LogService.getLogger();
  
 -  public ReflectionLuceneSerializer(Class<? extends Object> clazz, String[] indexedFields) {
-+  public ReflectionLuceneSerializer(Class<? extends Object> clazz, String[] indexedFields, HeterogeneousLuceneSerializer hSerializer) {
++  public ReflectionLuceneSerializer(Class<? extends Object> clazz, String[] indexedFields,
++      HeterogeneousLuceneSerializer hSerializer) {
 +    this.hSerializer = hSerializer;
      Set<String> fieldSet = new HashSet<String>();
      fieldSet.addAll(Arrays.asList(indexedFields));
  
-@@ -47,7 +52,7 @@ class ReflectionLuceneSerializer implements LuceneSerializer {
+@@ -47,7 +53,7 @@ class ReflectionLuceneSerializer implements LuceneSerializer {
      while (clazz != Object.class) {
        for (Field field : clazz.getDeclaredFields()) {
          Class<?> type = field.getType();
@@ -355,7 +358,7 @@ index 07a66fb0a..5ab95a371 100644
            field.setAccessible(true);
            foundFields.add(field);
          }
-@@ -57,6 +62,7 @@ class ReflectionLuceneSerializer implements LuceneSerializer {
+@@ -57,6 +63,7 @@ class ReflectionLuceneSerializer implements LuceneSerializer {
      }
  
      this.fields = foundFields.toArray(new Field[foundFields.size()]);
@@ -363,7 +366,7 @@ index 07a66fb0a..5ab95a371 100644
    }
  
    @Override
-@@ -76,4 +82,39 @@ class ReflectionLuceneSerializer implements LuceneSerializer {
+@@ -76,4 +83,39 @@ class ReflectionLuceneSerializer implements LuceneSerializer {
        logger.debug("ReflectionLuceneSerializer.toDocument:" + doc);
      }
    }
@@ -404,21 +407,23 @@ index 07a66fb0a..5ab95a371 100644
 +  }
  }
 diff --git a/geode-lucene/src/test/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionFieldMapperJUnitTest.java b/geode-lucene/src/test/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionFieldMapperJUnitTest.java
-index 3e0fe3ff8..e7aad0c5d 100644
+index 3e0fe3ff8..d2a14b077 100644
 --- a/geode-lucene/src/test/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionFieldMapperJUnitTest.java
 +++ b/geode-lucene/src/test/java/org/apache/geode/cache/lucene/internal/repository/serializer/ReflectionFieldMapperJUnitTest.java
-@@ -32,8 +32,8 @@ public class ReflectionFieldMapperJUnitTest {
+@@ -32,8 +32,10 @@ public class ReflectionFieldMapperJUnitTest {
    public void testAllFields() {
  
      String[] allFields = new String[] {"s", "i", "l", "d", "f", "s2"};
 -    ReflectionLuceneSerializer mapper1 = new ReflectionLuceneSerializer(Type1.class, allFields);
 -    ReflectionLuceneSerializer mapper2 = new ReflectionLuceneSerializer(Type2.class, allFields);
-+    ReflectionLuceneSerializer mapper1 = new ReflectionLuceneSerializer(Type1.class, allFields, null);
-+    ReflectionLuceneSerializer mapper2 = new ReflectionLuceneSerializer(Type2.class, allFields, null);
++    ReflectionLuceneSerializer mapper1 =
++        new ReflectionLuceneSerializer(Type1.class, allFields, null);
++    ReflectionLuceneSerializer mapper2 =
++        new ReflectionLuceneSerializer(Type2.class, allFields, null);
  
      Type1 t1 = new Type1("a", 1, 2L, 3.0, 4.0f);
      Type2 t2 = new Type2("a", 1, 2L, 3.0, 4.0f, "b");
-@@ -64,7 +64,7 @@ public class ReflectionFieldMapperJUnitTest {
+@@ -64,7 +66,7 @@ public class ReflectionFieldMapperJUnitTest {
    public void testIgnoreInvalid() {
  
      String[] fields = new String[] {"s", "o", "s2"};
@@ -427,7 +432,7 @@ index 3e0fe3ff8..e7aad0c5d 100644
  
      Type2 t = new Type2("a", 1, 2L, 3.0, 4.0f, "b");
  
-@@ -80,7 +80,7 @@ public class ReflectionFieldMapperJUnitTest {
+@@ -80,7 +82,7 @@ public class ReflectionFieldMapperJUnitTest {
    public void testNullField() {
  
      String[] fields = new String[] {"s", "o", "s2"};
@@ -449,7 +454,7 @@ index 795812fba..bcf1e0e36 100755
  
  war {
 diff --git a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java
-index edfdeaa42..277ced77a 100644
+index edfdeaa42..a36edab9e 100644
 --- a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java
 +++ b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java
 @@ -193,14 +193,18 @@ public class FunctionAccessController extends AbstractBaseController {
@@ -464,23 +469,23 @@ index edfdeaa42..277ced77a 100644
 -        } else {
 -          results = function.setArguments(args).execute(functionId);
 -        }
-+        System.out.println("GGG:"+argsInBody+":"+functionId);
++        System.out.println("GGG:" + argsInBody + ":" + functionId);
 +        results = function.setArguments(argsInBody).execute(functionId);
-+//        Object[] args = jsonToObjectArray(argsInBody);
-+//
-+//        // execute function with specified arguments
-+//        if (args.length == 1) {
-+//          System.out.println("GGG:"+args[0]+":"+functionId);
-+//          results = function.setArguments(args[0]).execute(functionId);
-+//        } else {
-+//          System.out.println("GGG2:"+args+":"+functionId);
-+//          results = function.setArguments(args).execute(functionId);
-+//        }
++        // Object[] args = jsonToObjectArray(argsInBody);
++        //
++        // // execute function with specified arguments
++        // if (args.length == 1) {
++        // System.out.println("GGG:"+args[0]+":"+functionId);
++        // results = function.setArguments(args[0]).execute(functionId);
++        // } else {
++        // System.out.println("GGG2:"+args+":"+functionId);
++        // results = function.setArguments(args).execute(functionId);
++        // }
        } else {
          // execute function with no args
          results = function.execute(functionId);
 diff --git a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java
-index 3dd987ff9..3dd85b12d 100644
+index 3dd987ff9..1a9ab931c 100644
 --- a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java
 +++ b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java
 @@ -18,6 +18,13 @@ import io.swagger.annotations.Api;
@@ -497,7 +502,7 @@ index 3dd987ff9..3dd85b12d 100644
  import org.apache.geode.internal.logging.LogService;
  import org.apache.geode.rest.internal.web.controllers.support.JSONTypes;
  import org.apache.geode.rest.internal.web.controllers.support.RegionData;
-@@ -191,6 +198,79 @@ public class PdxBasedCrudController extends CommonCrudController {
+@@ -191,6 +198,74 @@ public class PdxBasedCrudController extends CommonCrudController {
    }
  
    /**
@@ -510,8 +515,7 @@ index 3dd987ff9..3dd85b12d 100644
 +   */
 +  @RequestMapping(method = RequestMethod.GET, value = "/{region}/lucene query",
 +      produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
-+  @ApiOperation(value = "lucene query on region",
-+      notes = "Do lucene query on a region.",
++  @ApiOperation(value = "lucene query on region", notes = "Do lucene query on a region.",
 +      response = void.class)
 +  @ApiResponses({@ApiResponse(code = 200, message = "OK."),
 +      @ApiResponse(code = 400, message = "Bad request."),
@@ -521,16 +525,11 @@ index 3dd987ff9..3dd85b12d 100644
 +      @ApiResponse(code = 500, message = "GemFire throws an error or exception.")})
 +  @PreAuthorize("@securityService.authorize('DATA', 'WRITE', #region)")
 +  public ResponseEntity<?> read(@PathVariable("region") String region,
-+      @RequestParam(value = "index",
-+      defaultValue = "") final String index,
-+//      @RequestParam("index") String index,
-+      @RequestParam(value = "query",
-+          defaultValue = "name:Tom99*") final String query) {
++      @RequestParam(value = "index", defaultValue = "") final String index,
++      @RequestParam(value = "query", defaultValue = "name:Tom99*") final String query) {
 +    logger.debug("Do lucene query in Region ({})...", region);
 +
 +    region = decode(region);
-+//    index = decode(index);
-+//    query = decode(query);
 +
 +    Map<Object, Object> valueObjs = null;
 +    final RegionData<Object> data = new RegionData<>(region);
@@ -542,12 +541,13 @@ index 3dd987ff9..3dd85b12d 100644
 +    List<Object> values = new ArrayList<>(regionSize);
 +
 +    LuceneServiceImpl service = (LuceneServiceImpl) LuceneServiceProvider.get(getCache());
-+    LuceneIndexImpl luceneIndex = (LuceneIndexImpl)service.getIndex(index, region);
-+    LuceneQuery luceneQuery = service.createLuceneQueryFactory().create(index, region, query, "name");
-+    
++    LuceneIndexImpl luceneIndex = (LuceneIndexImpl) service.getIndex(index, region);
++    LuceneQuery luceneQuery =
++        service.createLuceneQueryFactory().create(index, region, query, "name");
++
 +    try {
 +      PageableLuceneQueryResults<Object, Object> results = luceneQuery.findPages();
-+      while(results.hasNext()) {
++      while (results.hasNext()) {
 +        results.next().stream().forEach(struct -> {
 +          Object value = struct.getValue();
 +          values.add(value);
@@ -555,12 +555,12 @@ index 3dd987ff9..3dd85b12d 100644
 +          keys.add(key);
 +        });
 +      }
++    } catch (LuceneQueryException e) {
 +    }
-+    catch (LuceneQueryException e) {
-+    }
++    data.add("Total found entries: " + values.size());
 +    data.add(values);
 +    keyList = StringUtils.collectionToDelimitedString(keys, ",");
-+    
++
 +    for (Map.Entry<Object, Object> entry : getValues(region).entrySet()) {
 +      Object value = entry.getValue();
 +      if (value != null) {
@@ -568,11 +568,11 @@ index 3dd987ff9..3dd85b12d 100644
 +        values.add(value);
 +      }
 +    }
-+    
++
 +    headers.set("Content-Location", toUri(region, keyList).toASCIIString());
 +    return new ResponseEntity<RegionData<?>>(data, headers, HttpStatus.OK);
 +  }
-+  
++
 +  /**
     * Reading data for set of keys
     * 

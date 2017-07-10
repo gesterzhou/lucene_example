@@ -415,12 +415,13 @@ public class Main {
     System.out.println("\nCompare with standard analyzer");
     queryByStringQueryParser("personIndex", "Person", "address:97763", 0);
 
-    System.out.println("\nFuzzy search examples:");
+    System.out.println("\nFuzzy search examples:~0.8 should find more accurate matchs than ~0.5");
     queryByStringQueryParser("personIndex", "Person", "name:Tom999*", 0);
     queryByStringQueryParser("personIndex", "Person", "name:Tom999~", 0);
     queryByStringQueryParser("personIndex", "Person", "name:Tom999~0.8", 0);
 
-    System.out.println("\nProximity search examples:");
+    System.out.println("\nProximity search examples:~2 allows 2 words' distance");
+    System.out.println("Thus it can find '999 Lindon St, Portland_OR_97999'");
     queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~1", 0);
     queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~2", 0);
 
