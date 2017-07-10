@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,10 +53,17 @@ import org.apache.geode.cache.lucene.PageableLuceneQueryResults;
 import org.apache.geode.cache.lucene.internal.LuceneIndexForPartitionedRegion;
 import org.apache.geode.cache.lucene.internal.LuceneIndexImpl;
 import org.apache.geode.cache.lucene.internal.LuceneServiceImpl;
+import org.apache.geode.cache.lucene.internal.PartitionedRepositoryManager;
+import org.apache.geode.cache.lucene.internal.repository.IndexRepository;
+import org.apache.geode.cache.lucene.internal.repository.RepositoryManager;
 import org.apache.geode.distributed.ServerLauncher;
 import org.apache.geode.distributed.ServerLauncher.Builder;
 import org.apache.geode.internal.DSFIDFactory;
+import org.apache.geode.internal.cache.BucketNotFoundException;
+import org.apache.geode.internal.cache.EntrySnapshot;
+import org.apache.geode.internal.cache.LocalRegion;
 import org.apache.geode.internal.cache.PartitionedRegion;
+import org.apache.geode.internal.cache.RegionEntry;
 import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.pdx.JSONFormatter;
 import org.apache.geode.pdx.PdxInstance;
@@ -79,6 +87,8 @@ public class Main {
   final static int SERVER_WITH_CLUSTER_CONFIG = 4;
   final static int CALCULATE_SIZE = 5;
   final static int LOAD_USER_DATA = 6;
+  final static int CREATE_DATA_ONLY = 7;
+  final static int REINDEX = 8;
   static int instanceType = CALCULATE_SIZE;
   
   private static String FILE_LOCATION = "./311-sample.csv";
@@ -172,6 +182,24 @@ public class Main {
           prog.waitUntilFlushed("serviceRequestIndex", "ServiceRequest");
 
           prog.doQueryServiceRequest();
+          break;
+          
+        case CREATE_DATA_ONLY:
+          // create cache, create index, create region
+          // do feed
+          // do query
+          prog.createCache(serverPort);
+          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, true);        
+          prog.doASimpleQuery();
+          break;
+
+        case REINDEX:
+          // create cache, create index, create region
+          // do feed
+          // do query
+          prog.createCache(serverPort);
+          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, false);        
+          prog.doASimpleQuery();
           break;
       }
       
@@ -278,6 +306,70 @@ public class Main {
     }
   }
 
+  private void createPersonRegionAndFeed(RegionShortcut shortcut, int count, boolean dataRegionOnly) {
+    if (!dataRegionOnly) {
+      service.createIndexFactory().setFields("name", "email", "address", "revenue").create("personIndex", "Person");      
+    }
+    PersonRegion = ((Cache)cache).createRegionFactory(shortcut).create("Person");
+    if (PersonRegion.size() == count) {
+      reindex("personIndex", "Person");
+    } else {
+      for (int i=0; i<count; i++) {
+        PersonRegion.put("key"+i, new Person(i));
+      }
+    }
+  }
+  
+  private void reindex(String indexName, String regionName) {
+    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex("personIndex", "Person");
+    if (index == null) {
+      System.out.println("Index not exist");
+      return;
+    }
+    PartitionedRegion pr = (PartitionedRegion)cache.getRegion(regionName);
+    if (pr == null) {
+      System.out.println("Region "+regionName+" not exist");
+      return;
+    }
+    int count = pr.size();
+    if (count == 0) {
+      System.out.println("Region "+regionName+" is empty");
+      return;
+    }
+    
+    PartitionedRepositoryManager repositoryManager = (PartitionedRepositoryManager)index.getRepositoryManager();
+    Iterator it = pr.entrySet().iterator();
+    int cnt = 0;
+    try {
+      while (it.hasNext()) {
+        EntrySnapshot mapEntry = (EntrySnapshot)it.next();
+        Object key = mapEntry.getKey();
+        Object value = mapEntry.getRawValue();
+        IndexRepository repository = repositoryManager.getRepository(pr, key, null);
+        if (value != null) {
+          repository.update(key, value);
+        } else {
+          repository.delete(key);
+        }
+        if (count % 100 == 0) {
+          refreshAndCommit(repositoryManager, pr);
+        }
+      }
+      refreshAndCommit(repositoryManager, pr);
+    }
+    catch (BucketNotFoundException e) {
+    }
+    catch (IOException e) {
+    }
+  }
+
+  private void refreshAndCommit(PartitionedRepositoryManager repositoryManager, PartitionedRegion pr) throws BucketNotFoundException, IOException {
+    for (int bucketId:pr.getDataStore().getAllLocalBucketIds()) {
+      IndexRepository repo = repositoryManager.getRepository(bucketId);
+      repo.commit();
+    }
+  }
+  
   private void createIndexAndRegionForServiceRequest(RegionShortcut shortcut) throws FileNotFoundException, java.text.ParseException {
     service.createIndexFactory().addField("uniqueKey").addField("createdDate")
     .addField("closedDate").addField("agency").addField("agencyName").addField("complaintType")
@@ -301,6 +393,17 @@ public class Main {
   
   public void doQueryServiceRequest() throws LuceneQueryException {
     queryByStringQueryParser("serviceRequestIndex", "ServiceRequest", "agencyName:Police", 10);
+  }
+
+  public void doASimpleQuery() throws LuceneQueryException {
+    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex("personIndex", "Person");
+    if (index == null) {
+      // it's a client
+      return;
+    }
+
+    System.out.println("Regular query on standard analyzer:");
+    queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 5);
   }
 
   public void doQuery() throws LuceneQueryException {
@@ -353,7 +456,7 @@ public class Main {
     }
 
     System.out.println("Regular query on soundex analyzer: double metaphone");
-    insertSoundexNames(PersonRegion);
+//    insertSoundexNames(PersonRegion);
     try {
       waitUntilFlushed("personIndex", "Person");
     }
@@ -462,6 +565,8 @@ public class Main {
     for (int i=0; i<count; i++) {
       PersonRegion.put("key"+i, new Person(i));
     }
+    
+    insertSoundexNames(PersonRegion);
     
     if (instanceType != CALCULATE_SIZE) {
       for (int i=0; i<count; i++) {

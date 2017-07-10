@@ -37,6 +37,32 @@ index 74de7a6a8..360ab55fb 100644
      compile ('org.apache.lucene:lucene-queryparser:' + project.'lucene.version') {
        exclude module: 'lucene-sandbox'
      }
+diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/AbstractPartitionedRepositoryManager.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/AbstractPartitionedRepositoryManager.java
+index 867794d05..67d860f06 100755
+--- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/AbstractPartitionedRepositoryManager.java
++++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/AbstractPartitionedRepositoryManager.java
+@@ -128,7 +128,7 @@ public abstract class AbstractPartitionedRepositoryManager implements Repository
+   /**
+    * Return the repository for a given user bucket
+    */
+-  protected IndexRepository getRepository(Integer bucketId) throws BucketNotFoundException {
++  public IndexRepository getRepository(Integer bucketId) throws BucketNotFoundException {
+     IndexRepository repo = indexRepositories.get(bucketId);
+     if (repo != null && !repo.isClosed()) {
+       return repo;
+diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/RawLuceneRepositoryManager.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/RawLuceneRepositoryManager.java
+index b9f4de898..59d076e0e 100755
+--- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/RawLuceneRepositoryManager.java
++++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/RawLuceneRepositoryManager.java
+@@ -29,7 +29,7 @@ public class RawLuceneRepositoryManager extends AbstractPartitionedRepositoryMan
+   }
+ 
+   @Override
+-  protected IndexRepository getRepository(Integer bucketId) throws BucketNotFoundException {
++  public IndexRepository getRepository(Integer bucketId) throws BucketNotFoundException {
+     IndexRepository repo = indexRepositories.get(bucketId);
+     if (repo != null && !repo.isClosed()) {
+       return repo;
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java
 index f356bef6b..597473aed 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/IndexRepositoryImpl.java
@@ -410,3 +436,144 @@ index 3e0fe3ff8..e7aad0c5d 100644
  
      Type2 t = new Type2("a", 1, 2L, 3.0, 4.0f, null);
  
+diff --git a/geode-web-api/build.gradle b/geode-web-api/build.gradle
+index 795812fba..bcf1e0e36 100755
+--- a/geode-web-api/build.gradle
++++ b/geode-web-api/build.gradle
+@@ -60,6 +60,7 @@ dependencies {
+ 
+   provided 'javax.servlet:javax.servlet-api:' + project.'javax.servlet-api.version'
+   provided project(':geode-core')
++  provided project(':geode-lucene')
+ }
+ 
+ war {
+diff --git a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java
+index edfdeaa42..277ced77a 100644
+--- a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java
++++ b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java
+@@ -193,14 +193,18 @@ public class FunctionAccessController extends AbstractBaseController {
+ 
+     try {
+       if (argsInBody != null) {
+-        Object[] args = jsonToObjectArray(argsInBody);
+-
+-        // execute function with specified arguments
+-        if (args.length == 1) {
+-          results = function.setArguments(args[0]).execute(functionId);
+-        } else {
+-          results = function.setArguments(args).execute(functionId);
+-        }
++        System.out.println("GGG:"+argsInBody+":"+functionId);
++        results = function.setArguments(argsInBody).execute(functionId);
++//        Object[] args = jsonToObjectArray(argsInBody);
++//
++//        // execute function with specified arguments
++//        if (args.length == 1) {
++//          System.out.println("GGG:"+args[0]+":"+functionId);
++//          results = function.setArguments(args[0]).execute(functionId);
++//        } else {
++//          System.out.println("GGG2:"+args+":"+functionId);
++//          results = function.setArguments(args).execute(functionId);
++//        }
+       } else {
+         // execute function with no args
+         results = function.execute(functionId);
+diff --git a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java
+index 3dd987ff9..3dd85b12d 100644
+--- a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java
++++ b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java
+@@ -18,6 +18,13 @@ import io.swagger.annotations.Api;
+ import io.swagger.annotations.ApiOperation;
+ import io.swagger.annotations.ApiResponse;
+ import io.swagger.annotations.ApiResponses;
++
++import org.apache.geode.cache.lucene.LuceneQuery;
++import org.apache.geode.cache.lucene.LuceneQueryException;
++import org.apache.geode.cache.lucene.LuceneServiceProvider;
++import org.apache.geode.cache.lucene.PageableLuceneQueryResults;
++import org.apache.geode.cache.lucene.internal.LuceneIndexImpl;
++import org.apache.geode.cache.lucene.internal.LuceneServiceImpl;
+ import org.apache.geode.internal.logging.LogService;
+ import org.apache.geode.rest.internal.web.controllers.support.JSONTypes;
+ import org.apache.geode.rest.internal.web.controllers.support.RegionData;
+@@ -191,6 +198,79 @@ public class PdxBasedCrudController extends CommonCrudController {
+   }
+ 
+   /**
++   * Do lucene query in a given Region
++   * 
++   * @param region gemfire region name
++   * @param index gemfire lucene index name
++   * @param query lucene query string
++   * @return JSON document
++   */
++  @RequestMapping(method = RequestMethod.GET, value = "/{region}/lucene query",
++      produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
++  @ApiOperation(value = "lucene query on region",
++      notes = "Do lucene query on a region.",
++      response = void.class)
++  @ApiResponses({@ApiResponse(code = 200, message = "OK."),
++      @ApiResponse(code = 400, message = "Bad request."),
++      @ApiResponse(code = 401, message = "Invalid Username or Password."),
++      @ApiResponse(code = 403, message = "Insufficient privileges for operation."),
++      @ApiResponse(code = 404, message = "Region does not exist."),
++      @ApiResponse(code = 500, message = "GemFire throws an error or exception.")})
++  @PreAuthorize("@securityService.authorize('DATA', 'WRITE', #region)")
++  public ResponseEntity<?> read(@PathVariable("region") String region,
++      @RequestParam(value = "index",
++      defaultValue = "") final String index,
++//      @RequestParam("index") String index,
++      @RequestParam(value = "query",
++          defaultValue = "name:Tom99*") final String query) {
++    logger.debug("Do lucene query in Region ({})...", region);
++
++    region = decode(region);
++//    index = decode(index);
++//    query = decode(query);
++
++    Map<Object, Object> valueObjs = null;
++    final RegionData<Object> data = new RegionData<>(region);
++
++    final HttpHeaders headers = new HttpHeaders();
++    String keyList = null;
++    int regionSize = getRegion(region).size();
++    List<Object> keys = new ArrayList<>(regionSize);
++    List<Object> values = new ArrayList<>(regionSize);
++
++    LuceneServiceImpl service = (LuceneServiceImpl) LuceneServiceProvider.get(getCache());
++    LuceneIndexImpl luceneIndex = (LuceneIndexImpl)service.getIndex(index, region);
++    LuceneQuery luceneQuery = service.createLuceneQueryFactory().create(index, region, query, "name");
++    
++    try {
++      PageableLuceneQueryResults<Object, Object> results = luceneQuery.findPages();
++      while(results.hasNext()) {
++        results.next().stream().forEach(struct -> {
++          Object value = struct.getValue();
++          values.add(value);
++          Object key = struct.getKey();
++          keys.add(key);
++        });
++      }
++    }
++    catch (LuceneQueryException e) {
++    }
++    data.add(values);
++    keyList = StringUtils.collectionToDelimitedString(keys, ",");
++    
++    for (Map.Entry<Object, Object> entry : getValues(region).entrySet()) {
++      Object value = entry.getValue();
++      if (value != null) {
++        keys.add(entry.getKey());
++        values.add(value);
++      }
++    }
++    
++    headers.set("Content-Location", toUri(region, keyList).toASCIIString());
++    return new ResponseEntity<RegionData<?>>(data, headers, HttpStatus.OK);
++  }
++  
++  /**
+    * Reading data for set of keys
+    * 
+    * @param region gemfire region name
