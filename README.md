@@ -239,7 +239,7 @@ gfsh>deploy --jar=/Users/gzhou/lucene_demo/server/lucene_example/build/libs/luce
 server50505 | lucene_example-0.0.1.jar | /Users/gzhou/lucene_demo/locator/server50505/vf.gf#lucene_example-0.0.1.jar#1
 
 
-create lucene index --name=analyzerIndex --region=/Person --field=name,email,address,revenue --analyzer=null,org.apache.lucene.analysis.core.KeywordAnalyzer,examples.MyCharacterAnalyzer,null
+create lucene index --name=analyzerIndex --region=/Person --field=name,email,address,revenue --analyzer=DEFAULT,org.apache.lucene.analysis.core.KeywordAnalyzer,examples.MyCharacterAnalyzer,DEFAULT
 create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue
 create lucene index --name=customerIndex --region=/Customer --field=symbol,revenue,SSN,name,email,address,__REGION_VALUE_FIELD
 create lucene index --name=pageIndex --region=/Page --field=id,title,content
