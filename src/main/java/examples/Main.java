@@ -312,7 +312,7 @@ public class Main {
     }
     PersonRegion = ((Cache)cache).createRegionFactory(shortcut).create("Person");
     if (PersonRegion.size() == count) {
-      reindex("personIndex", "Person");
+//      reindex("personIndex", "Person");
     } else {
       for (int i=0; i<count; i++) {
         PersonRegion.put("key"+i, new Person(i));
@@ -320,55 +320,55 @@ public class Main {
     }
   }
   
-  private void reindex(String indexName, String regionName) {
-    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex("personIndex", "Person");
-    if (index == null) {
-      System.out.println("Index not exist");
-      return;
-    }
-    PartitionedRegion pr = (PartitionedRegion)cache.getRegion(regionName);
-    if (pr == null) {
-      System.out.println("Region "+regionName+" not exist");
-      return;
-    }
-    int count = pr.size();
-    if (count == 0) {
-      System.out.println("Region "+regionName+" is empty");
-      return;
-    }
-    
-    PartitionedRepositoryManager repositoryManager = (PartitionedRepositoryManager)index.getRepositoryManager();
-    Iterator it = pr.entrySet().iterator();
-    int cnt = 0;
-    try {
-      while (it.hasNext()) {
-        EntrySnapshot mapEntry = (EntrySnapshot)it.next();
-        Object key = mapEntry.getKey();
-        Object value = mapEntry.getRawValue();
-        IndexRepository repository = repositoryManager.getRepository(pr, key, null);
-        if (value != null) {
-          repository.update(key, value);
-        } else {
-          repository.delete(key);
-        }
-        if (count % 100 == 0) {
-          refreshAndCommit(repositoryManager, pr);
-        }
-      }
-      refreshAndCommit(repositoryManager, pr);
-    }
-    catch (BucketNotFoundException e) {
-    }
-    catch (IOException e) {
-    }
-  }
-
-  private void refreshAndCommit(PartitionedRepositoryManager repositoryManager, PartitionedRegion pr) throws BucketNotFoundException, IOException {
-    for (int bucketId:pr.getDataStore().getAllLocalBucketIds()) {
-      IndexRepository repo = repositoryManager.getRepository(bucketId);
-      repo.commit();
-    }
-  }
+//  private void reindex(String indexName, String regionName) {
+//    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex("personIndex", "Person");
+//    if (index == null) {
+//      System.out.println("Index not exist");
+//      return;
+//    }
+//    PartitionedRegion pr = (PartitionedRegion)cache.getRegion(regionName);
+//    if (pr == null) {
+//      System.out.println("Region "+regionName+" not exist");
+//      return;
+//    }
+//    int count = pr.size();
+//    if (count == 0) {
+//      System.out.println("Region "+regionName+" is empty");
+//      return;
+//    }
+//    
+//    PartitionedRepositoryManager repositoryManager = (PartitionedRepositoryManager)index.getRepositoryManager();
+//    Iterator it = pr.entrySet().iterator();
+//    int cnt = 0;
+//    try {
+//      while (it.hasNext()) {
+//        EntrySnapshot mapEntry = (EntrySnapshot)it.next();
+//        Object key = mapEntry.getKey();
+//        Object value = mapEntry.getRawValue();
+//        IndexRepository repository = repositoryManager.getRepository(pr, key, null);
+//        if (value != null) {
+//          repository.update(key, value);
+//        } else {
+//          repository.delete(key);
+//        }
+//        if (count % 100 == 0) {
+//          refreshAndCommit(repositoryManager, pr);
+//        }
+//      }
+//      refreshAndCommit(repositoryManager, pr);
+//    }
+//    catch (BucketNotFoundException e) {
+//    }
+//    catch (IOException e) {
+//    }
+//  }
+//
+//  private void refreshAndCommit(PartitionedRepositoryManager repositoryManager, PartitionedRegion pr) throws BucketNotFoundException, IOException {
+//    for (int bucketId:pr.getDataStore().getAllLocalBucketIds()) {
+//      IndexRepository repo = repositoryManager.getRepository(bucketId);
+//      repo.commit();
+//    }
+//  }
   
   private void createIndexAndRegionForServiceRequest(RegionShortcut shortcut) throws FileNotFoundException, java.text.ParseException {
     service.createIndexFactory().addField("uniqueKey").addField("createdDate")
@@ -438,10 +438,10 @@ public class Main {
     System.out.println("\nExamples of QueryProvider");
     queryByIntRange("customerIndex", "Customer", "SSN", 995, Integer.MAX_VALUE);
     
-    System.out.println("\nExamples of ToParentBlockJoin query provider");
-    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou11*", "email");
-
-    queryByGrandChildJoinQuery("customerIndex", "Customer", "symbol", "name", "title", "email:tzhou12*", "PivotalPage123*");
+//    System.out.println("\nExamples of ToParentBlockJoin query provider");
+//    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou11*", "email");
+//
+//    queryByGrandChildJoinQuery("customerIndex", "Customer", "symbol", "name", "title", "email:tzhou12*", "PivotalPage123*");
 
     // cross regions:
     // query analyzerIndex to find a Person with address:97763, then use Person's name to find the Customer

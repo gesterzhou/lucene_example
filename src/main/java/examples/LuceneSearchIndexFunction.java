@@ -1,6 +1,7 @@
 package examples;
 
 import java.util.ArrayList;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -8,7 +9,7 @@ import java.util.Set;
 
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.CacheFactory;
-import org.apache.geode.cache.execute.FunctionAdapter;
+import org.apache.geode.cache.execute.Function;
 import org.apache.geode.cache.execute.FunctionContext;
 import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.cache.lucene.LuceneQuery;
@@ -17,8 +18,6 @@ import org.apache.geode.cache.lucene.LuceneResultStruct;
 import org.apache.geode.cache.lucene.LuceneService;
 import org.apache.geode.cache.lucene.LuceneServiceProvider;
 import org.apache.geode.cache.lucene.PageableLuceneQueryResults;
-import org.apache.geode.cache.lucene.internal.LuceneIndexImpl;
-import org.apache.geode.internal.InternalEntity;
 
 /**
  * The LuceneSearchIndexFunction class is a function used to collect the information on a particular
@@ -34,7 +33,7 @@ import org.apache.geode.internal.InternalEntity;
  * @see LuceneIndexInfo
  */
 @SuppressWarnings("unused")
-public class LuceneSearchIndexFunction<K, V> extends FunctionAdapter implements InternalEntity {
+public class LuceneSearchIndexFunction<K, V> implements Function {
 
   protected Cache getCache() {
     return CacheFactory.getAnyInstance();
