@@ -438,10 +438,10 @@ public class Main {
     System.out.println("\nExamples of QueryProvider");
     queryByIntRange("customerIndex", "Customer", "SSN", 995, Integer.MAX_VALUE);
     
-//    System.out.println("\nExamples of ToParentBlockJoin query provider");
-//    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou11*", "email");
-//
-//    queryByGrandChildJoinQuery("customerIndex", "Customer", "symbol", "name", "title", "email:tzhou12*", "PivotalPage123*");
+    System.out.println("\nExamples of ToParentBlockJoin query provider");
+    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou11*", "email");
+
+    queryByGrandChildJoinQuery("customerIndex", "Customer", "symbol", "name", "title", "email:tzhou12*", "PivotalPage123*");
 
     // cross regions:
     // query analyzerIndex to find a Person with address:97763, then use Person's name to find the Customer
