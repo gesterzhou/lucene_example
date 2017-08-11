@@ -1,31 +1,31 @@
 diff --git a/geode-assembly/build.gradle b/geode-assembly/build.gradle
-index 19a73f324..b39f7e6df 100755
+index a76afdc05..9e89e5a29 100755
 --- a/geode-assembly/build.gradle
 +++ b/geode-assembly/build.gradle
-@@ -194,6 +194,8 @@ def cp = {
-         it.contains('lucene-analyzers-common') ||
+@@ -203,6 +203,8 @@ def cp = {
          it.contains('lucene-core') ||
          it.contains('lucene-queries') ||
+         it.contains('lucene-queryparser') ||
 +        it.contains('lucene-join') ||
 +        it.contains('lucene-grouping') ||
-         it.contains('lucene-queryparser') ||
+         it.contains('lucene-analyzers-phonetic') ||
  
          // dependencies from geode-protobuf
 diff --git a/geode-assembly/src/test/resources/expected_jars.txt b/geode-assembly/src/test/resources/expected_jars.txt
-index 05f583459..fc18ab4ad 100644
+index bc49bcef6..a88e97a2c 100644
 --- a/geode-assembly/src/test/resources/expected_jars.txt
 +++ b/geode-assembly/src/test/resources/expected_jars.txt
-@@ -46,6 +46,8 @@ lucene-analyzers-common
+@@ -47,6 +47,8 @@ lucene-analyzers-common
  lucene-core
  lucene-queries
  lucene-queryparser
 +lucene-join
 +lucene-grouping
+ lucene-analyzers-phonetic
  mx4j
  mx4j-remote
- mx4j-tools
 diff --git a/geode-lucene/build.gradle b/geode-lucene/build.gradle
-index 74de7a6a8..360ab55fb 100644
+index 2f6974d1e..544e28b1e 100644
 --- a/geode-lucene/build.gradle
 +++ b/geode-lucene/build.gradle
 @@ -22,6 +22,8 @@ dependencies {
@@ -34,11 +34,11 @@ index 74de7a6a8..360ab55fb 100644
      compile 'org.apache.lucene:lucene-queries:' + project.'lucene.version'
 +    compile 'org.apache.lucene:lucene-join:' + project.'lucene.version'
 +    compile 'org.apache.lucene:lucene-grouping:' + project.'lucene.version'
+     compile ('org.apache.lucene:lucene-analyzers-phonetic:' + project.'lucene.version')
      compile ('org.apache.lucene:lucene-queryparser:' + project.'lucene.version') {
        exclude module: 'lucene-sandbox'
-     }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/AbstractPartitionedRepositoryManager.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/AbstractPartitionedRepositoryManager.java
-index 867794d05..67d860f06 100755
+index 3b8df7e3f..f55b9f5af 100755
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/AbstractPartitionedRepositoryManager.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/AbstractPartitionedRepositoryManager.java
 @@ -128,7 +128,7 @@ public abstract class AbstractPartitionedRepositoryManager implements Repository
@@ -114,7 +114,7 @@ index f356bef6b..67073171c 100644
        stats.endUpdate(start);
      }
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java
-index b0a98a1e8..f8d34df58 100644
+index 3c2f8b727..e8785ca34 100644
 --- a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/HeterogeneousLuceneSerializer.java
 @@ -14,8 +14,14 @@
@@ -132,7 +132,7 @@ index b0a98a1e8..f8d34df58 100644
  
  import org.apache.logging.log4j.Logger;
  import org.apache.lucene.document.Document;
-@@ -46,7 +52,7 @@ public class HeterogeneousLuceneSerializer implements LuceneSerializer {
+@@ -45,7 +51,7 @@ public class HeterogeneousLuceneSerializer implements LuceneSerializer {
     * 
     * Weak so that entry will be removed if a class is garbage collected.
     */
@@ -141,7 +141,7 @@ index b0a98a1e8..f8d34df58 100644
        new CopyOnWriteWeakHashMap<Class<?>, LuceneSerializer>();
  
    private static final Logger logger = LogService.getLogger();
-@@ -86,22 +92,105 @@ public class HeterogeneousLuceneSerializer implements LuceneSerializer {
+@@ -85,22 +91,105 @@ public class HeterogeneousLuceneSerializer implements LuceneSerializer {
      }
    }
  
@@ -454,36 +454,34 @@ index 795812fba..bcf1e0e36 100755
  
  war {
 diff --git a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java
-index edfdeaa42..a36edab9e 100644
+index edfdeaa42..f0a13e68e 100644
 --- a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java
 +++ b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/FunctionAccessController.java
-@@ -193,14 +193,18 @@ public class FunctionAccessController extends AbstractBaseController {
+@@ -43,6 +43,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
+ import org.springframework.web.bind.annotation.ResponseStatus;
+ 
+ import java.util.ArrayList;
++import java.util.Arrays;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+@@ -193,12 +194,16 @@ public class FunctionAccessController extends AbstractBaseController {
  
      try {
        if (argsInBody != null) {
--        Object[] args = jsonToObjectArray(argsInBody);
--
--        // execute function with specified arguments
--        if (args.length == 1) {
--          results = function.setArguments(args[0]).execute(functionId);
--        } else {
--          results = function.setArguments(args).execute(functionId);
--        }
-+        System.out.println("GGG:" + argsInBody + ":" + functionId);
-+        results = function.setArguments(argsInBody).execute(functionId);
-+        // Object[] args = jsonToObjectArray(argsInBody);
-+        //
-+        // // execute function with specified arguments
-+        // if (args.length == 1) {
-+        // System.out.println("GGG:"+args[0]+":"+functionId);
-+        // results = function.setArguments(args[0]).execute(functionId);
-+        // } else {
-+        // System.out.println("GGG2:"+args+":"+functionId);
-+        // results = function.setArguments(args).execute(functionId);
-+        // }
++        // System.out.println("GGG:" + argsInBody + ":" + functionId);
++        // results = function.setArguments(argsInBody).execute(functionId);
+         Object[] args = jsonToObjectArray(argsInBody);
+ 
+         // execute function with specified arguments
+         if (args.length == 1) {
++          System.out.println("GGG:" + args[0] + ":" + functionId);
+           results = function.setArguments(args[0]).execute(functionId);
+         } else {
++          System.out.println("GGG2:" + Arrays.toString(args) + ":" + functionId);
+           results = function.setArguments(args).execute(functionId);
+         }
        } else {
-         // execute function with no args
-         results = function.execute(functionId);
 diff --git a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java b/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java
 index 3dd987ff9..1a9ab931c 100644
 --- a/geode-web-api/src/main/java/org/apache/geode/rest/internal/web/controllers/PdxBasedCrudController.java
@@ -507,7 +505,7 @@ index 3dd987ff9..1a9ab931c 100644
  
    /**
 +   * Do lucene query in a given Region
-+   * 
++   *
 +   * @param region gemfire region name
 +   * @param index gemfire lucene index name
 +   * @param query lucene query string
