@@ -46,12 +46,24 @@ public class LuceneSearchIndexFunction<K, V> implements Function {
   private LuceneQueryInfo createQueryInfoFromString(String strParm) {
     String params[] = strParm.split(",");
     //  "personIndex,Person,name:Tom99*,name,-1,false"
-    int limit = Integer.parseInt(params[4]);
-    boolean isKeyOnly = Boolean.parseBoolean(params[5]);
-    LuceneQueryInfo queryInfo = new LuceneQueryInfo(params[0] /*index name */, 
-        params[1] /* regionPath */, 
-        params[2] /* queryString */,
-        params[3] /* default field */,
+    int limit = Integer.parseInt((String)params[4]);
+    boolean isKeyOnly = Boolean.parseBoolean((String)params[5]);
+    LuceneQueryInfo queryInfo = new LuceneQueryInfo((String)params[0] /*index name */, 
+        (String)params[1] /* regionPath */, 
+        (String)params[2] /* queryString */,
+        (String)params[3] /* default field */,
+        limit, isKeyOnly);
+    return queryInfo;
+  }
+  
+  private LuceneQueryInfo createQueryInfoFromString(Object[] params) {
+    //  "personIndex,Person,name:Tom99*,name,-1,false"
+    int limit = (int)params[4];
+    boolean isKeyOnly = (boolean)params[5];
+    LuceneQueryInfo queryInfo = new LuceneQueryInfo((String)params[0] /*index name */, 
+        (String)params[1] /* regionPath */, 
+        (String)params[2] /* queryString */,
+        (String)params[3] /* default field */,
         limit, isKeyOnly);
     return queryInfo;
   }
@@ -66,6 +78,9 @@ public class LuceneSearchIndexFunction<K, V> implements Function {
     } else if (args instanceof String) {
       String strParm = (String)args;
       queryInfo = createQueryInfoFromString(strParm);
+    } else if (args instanceof Object[]) {
+      queryInfo = createQueryInfoFromString((Object[])args);
+      /* for curl -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d '[{"@type": "string","@value": "personIndex"},{"@type": "string","@value": "Person"},{"@type": "string","@value": "name:Tom99*"},{"@type": "string","@value": "name"},{"@type": "int","@value": -1},{"@type": "boolean","@value": false}]' 'http://localhost:8081/geode/v1/functions/LuceneSearchIndexFunction?onRegion=Person' */
     }
 
     LuceneService luceneService = LuceneServiceProvider.get(getCache());
