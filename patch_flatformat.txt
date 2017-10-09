@@ -1,4 +1,4 @@
-commit 90d3a4bf0fdf0227f21857d294352a79911e6d75
+commit 9b307944b72c60e328aec9844baca9895bdda935
 Author: zhouxh <gzhou@pivotal.io>
 Date:   Thu Oct 5 15:01:59 2017 -0700
 
@@ -61,10 +61,10 @@ index 000000000..ccab40339
 +}
 diff --git a/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/FlatFormatSerializer.java b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/FlatFormatSerializer.java
 new file mode 100644
-index 000000000..3f22b3f74
+index 000000000..50c3389b6
 --- /dev/null
 +++ b/geode-lucene/src/main/java/org/apache/geode/cache/lucene/internal/repository/serializer/FlatFormatSerializer.java
-@@ -0,0 +1,255 @@
+@@ -0,0 +1,257 @@
 +/*
 + * Licensed to the Apache Software Foundation (ASF) under one or more contributor license
 + * agreements. See the NOTICE file distributed with this work for additional information regarding
@@ -247,9 +247,9 @@ index 000000000..3f22b3f74
 +      this.prefix = prefix;
 +    }
 +
-+    @Override
-+    public Collection<Document> toDocuments(LuceneIndex index, Object value) {
++    public Document toDocument(String parentPrefix, Object value) {
 +      Document parentDoc = new Document();
++      String wholePrefix = getWholePrefix(parentPrefix, prefix);
 +
 +      for (Field field : fields) {
 +        try {
@@ -269,16 +269,17 @@ index 000000000..3f22b3f74
 +            String[] topLevelFieldNames =
 +                topLevelFieldSet.toArray(new String[topLevelFieldSet.size()]);
 +
-+            LuceneSerializer childSerializer = getFieldMapper(fieldValue, topLevelFieldNames);
-+            Collection<Document> childDocs = childSerializer.toDocuments(index, fieldValue);
-+            for (Document childDoc : childDocs) {
-+              for (IndexableField oneDocField : childDoc.getFields()) {
-+                parentDoc.add(addPrefixToDocumentField(oneDocField, prefix));
-+              }
++            FlatFormatReflectionLuceneSerializer childSerializer =
++                (FlatFormatReflectionLuceneSerializer) getFieldMapper(fieldValue,
++                    topLevelFieldNames);
++            Document childDoc = childSerializer.toDocument(wholePrefix, fieldValue);
++            for (IndexableField oneDocField : childDoc.getFields()) {
++              parentDoc.add(oneDocField);
 +            }
 +          } else {
 +            SerializerUtil.addField(parentDoc,
-+                (prefix == null ? field.getName() : prefix + "." + field.getName()), fieldValue);
++                (wholePrefix == null ? field.getName() : wholePrefix + "." + field.getName()),
++                fieldValue);
 +          }
 +        } catch (IllegalArgumentException | IllegalAccessException e) {
 +          if (logger.isDebugEnabled()) {
@@ -290,23 +291,24 @@ index 000000000..3f22b3f74
 +      if (logger.isDebugEnabled()) {
 +        logger.debug("FlatFormatReflectionLuceneSerializer.toDocuments:" + parentDoc);
 +      }
-+      return Collections.singleton(parentDoc);
++      return parentDoc;
 +    }
 +
-+    private IndexableField addPrefixToDocumentField(IndexableField oneDocField, String prefix) {
-+      if (prefix == null) {
-+        return oneDocField;
++    private String getWholePrefix(String parentPrefix, String localPrefix) {
++      if (parentPrefix != null) {
++        return parentPrefix + "." + localPrefix;
++      } else {
++        return localPrefix;
 +      }
-+      String newName = prefix + "." + oneDocField.name();
-+      // do it for each field type used in SerializerUtil.addField()
-+      if (oneDocField instanceof TextField) {
-+        TextField newTextField =
-+            new TextField(newName, ((TextField) oneDocField).stringValue(), Store.NO);
-+        return newTextField;
++    }
++
++    @Override
++    public Collection<Document> toDocuments(LuceneIndex index, Object value) {
++      Document parentDoc = toDocument(prefix, value);
++      if (logger.isDebugEnabled()) {
++        logger.debug("FlatFormatReflectionLuceneSerializer.toDocuments:" + parentDoc);
 +      }
-+      // TODO: we have to change field name for each field type. But LongPoint seems not
-+      // straightforward.
-+      return null;
++      return Collections.singleton(parentDoc);
 +    }
 +
 +    protected boolean isSupported(Class<?> type) {
