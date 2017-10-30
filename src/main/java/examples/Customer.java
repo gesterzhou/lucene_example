@@ -1,36 +1,43 @@
 package examples;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 
 public class Customer implements Serializable {
   private String name;
   private String symbol; // search integer in string format
   private int revenue;
   private int SSN; // search int
-  private Person contact; // search nested object 
+  private Collection<String> phoneNumbers;
+//  private Person contact;
+  private Collection<Person> contacts;
+  private Page[] myHomePages;
 
   public Customer() {}
 
-  public Customer(String name, String symbol, int revenue, int ssn, Person contact) {
-    this.name = name;
-    this.symbol = symbol;
-    this.revenue = revenue;
-    this.SSN = ssn;
-    this.contact = contact;
+  public void addContact(Person contact) {
+    this.contacts.add(contact);
   }
 
   public Customer(int idx) {
     this.name = Person.createName(idx);
     this.symbol = ""+idx;
     this.revenue = 1000 * idx;
-    this.SSN = idx;
-    this.contact = new Person(idx);
+    this.SSN = idx;    
+    this.phoneNumbers = new ArrayList<String>();
+    this.phoneNumbers.add("503533"+(1000+idx));
+    this.phoneNumbers.add("503534"+(1000+idx));
+    this.contacts = Collections.singleton(new Person(idx));
+    this.myHomePages = new Page[] { new Page(idx) };
+//    this.contact = new Person(idx);
   }
 
   public String getName() {
     return name;
   }
-  
+
   public String getSymbol() {
     return symbol;
   }
@@ -43,8 +50,16 @@ public class Customer implements Serializable {
     return SSN;
   }
 
-  public Person getContact() {
-    return contact;
+  public Collection<String> getPhoneNumbers() {
+    return this.phoneNumbers;
+  }
+
+  public Collection<Person> getContacts() {
+    return contacts;
+  }
+
+  public Page[] getMyHomePages() {
+    return this.myHomePages;
   }
 
   @Override
@@ -54,7 +69,8 @@ public class Customer implements Serializable {
     sb.append("symbol='").append(symbol).append('\'');
     sb.append(", revenue=").append(revenue);
     sb.append(", SSN=").append(SSN);
-    sb.append(", contact='").append(contact).append('\'');
+    sb.append(", phoneNumbers=").append(phoneNumbers);
+    sb.append(", contacts='").append(contacts).append('\'');
     sb.append('}');
     return sb.toString();
   }

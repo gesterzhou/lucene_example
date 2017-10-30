@@ -1,12 +1,14 @@
 package examples;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 public class Person implements Serializable {
   private String name;
   private String email;
   private int revenue;
   private String address;
+  private String[] phoneNumbers;
   private Page homepage;
 
   public Person() {}
@@ -17,19 +19,20 @@ public class Person implements Serializable {
     this.address = address;
     this.homepage = new Page(name);
   }
-  
+
   public Person(int idx) {
     this.name = createName(idx);
     this.email = "tzhou"+idx+"@example.com";
     this.address = ""+idx+" Lindon St, Portland_OR_"+(97000+idx);
     this.revenue = idx*1000;
     this.homepage = new Page(idx);
+    this.phoneNumbers = new String[] { "503633"+(1000+idx), "503634"+(1000+idx)};
   }
 
   static String createName(int idx) {
     return "Tom"+idx+" Zhou";
   }
-  
+
   public String getName() {
     return name;
   }

@@ -6,8 +6,6 @@ public class Page implements Serializable {
   private int id; // search integer in int format
   private String title;
   private String content;
-  final String desc = "At client and server JVM, initializing cache will create the LuceneServiceImpl object," 
-     +" which is a singleton at each JVM."; 
 
   public Page() {}
 
@@ -17,18 +15,23 @@ public class Page implements Serializable {
     this.content = content;
   }
 
-  public Page(int idx) {
-    this.id = idx;
-    this.title = "PivotalPage"+idx;
-    this.content = desc;
-  }
-
   public Page(String title) {
     this.id = 0;
     this.title = "PivotalPage"+title;
-    this.content = desc;
+    this.content = "Hello world no 0";
   }
-  
+
+  public Page(int idx) {
+    this.id = idx;
+    this.title = "PivotalPage"+idx;
+    if (id % 10 == 0) {
+      this.title += " manager";
+    } else {
+      this.title += " developer";
+    }
+    this.content = "Hello world no " + id;
+  }
+
   public int getId() {
     return id;
   }

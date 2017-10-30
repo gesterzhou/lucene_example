@@ -43,6 +43,7 @@ import org.apache.geode.cache.execute.Execution;
 import org.apache.geode.cache.execute.Function;
 import org.apache.geode.cache.execute.FunctionService;
 import org.apache.geode.cache.execute.ResultCollector;
+import org.apache.geode.cache.lucene.FlatFormatSerializer;
 import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.cache.lucene.LuceneQuery;
 import org.apache.geode.cache.lucene.LuceneQueryException;
@@ -285,7 +286,7 @@ public class Main {
       fields.put("name",  new DoubleMetaphoneAnalyzer());
       fields.put("email", new KeywordAnalyzer());
       fields.put("address", new MyCharacterAnalyzer());
-      service.createIndex("analyzerIndex", "Person", fields);
+      service.createIndexFactory().setFields(fields).create("analyzerIndex", "Person");
     }
 
     // create an index using standard analyzer on region /Person
@@ -295,8 +296,13 @@ public class Main {
     if (instanceType != CALCULATE_SIZE) {
       // create an index using standard analyzer on region /Customer
       service.createIndexFactory().addField("name").addField("symbol").addField("revenue").addField("SSN")
-      .addField("contact.name").addField("contact.email").addField("contact.address").addField("contact.homepage.title")
+      .addField("phoneNumers").addField("myHomePages.content")
+      .addField("contacts.name").addField("contacts.phoneNumbers")
+      .addField("contacts.email", new KeywordAnalyzer())
+      .addField("contacts.address").addField("contacts.homepage.title")
+      .addField("contact.homepage.id")
       .addField(LuceneService.REGION_VALUE_FIELD)
+      .setLuceneSerializer(new FlatFormatSerializer())
       .create("customerIndex", "Customer");
       CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
 
@@ -392,7 +398,7 @@ public class Main {
   }
   
   public void doQueryServiceRequest() throws LuceneQueryException {
-    queryByStringQueryParser("serviceRequestIndex", "ServiceRequest", "agencyName:Police", 10);
+    queryByStringQueryParser("serviceRequestIndex", "ServiceRequest", "agencyName:Police", 10, "name");
   }
 
   public void doASimpleQuery() throws LuceneQueryException {
@@ -403,36 +409,36 @@ public class Main {
     }
 
     System.out.println("Regular query on standard analyzer:");
-    queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 5);
+    queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 5, "name");
   }
 
   public void doQuery() throws LuceneQueryException {
     System.out.println("Regular query on standard analyzer:");
-    queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 5);
+    queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 5, "name");
     
     System.out.println("\nUse customized analyzer to tokenize by '_'");
-    queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0);
+    queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0, "name");
     System.out.println("\nCompare with standard analyzer");
-    queryByStringQueryParser("personIndex", "Person", "address:97763", 0);
+    queryByStringQueryParser("personIndex", "Person", "address:97763", 0, "name");
 
     System.out.println("\nFuzzy search examples:~0.8 should find more accurate matchs than ~0.5");
-    queryByStringQueryParser("personIndex", "Person", "name:Tom999*", 0);
-    queryByStringQueryParser("personIndex", "Person", "name:Tom999~", 0);
-    queryByStringQueryParser("personIndex", "Person", "name:Tom999~0.8", 0);
+    queryByStringQueryParser("personIndex", "Person", "name:Tom999*", 0, "name");
+    queryByStringQueryParser("personIndex", "Person", "name:Tom999~", 0, "name");
+    queryByStringQueryParser("personIndex", "Person", "name:Tom999~0.8", 0, "name");
 
     System.out.println("\nProximity search examples:~2 allows 2 words' distance");
     System.out.println("Thus it can find '999 Lindon St, Portland_OR_97999'");
-    queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~1", 0);
-    queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~2", 0);
+    queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~1", 0, "name");
+    queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~2", 0, "name");
 
     System.out.println("\nQuery with composite condition");
-    queryByStringQueryParser("analyzerIndex", "Person", "name:Tom999* OR address:97763", 0);
+    queryByStringQueryParser("analyzerIndex", "Person", "name:Tom999* OR address:97763", 0, "name");
 
     System.out.println("\nsearch region Customer for symbol 123 and 456");
-    queryByStringQueryParser("customerIndex", "Customer", "symbol:123", 0);
-    queryByStringQueryParser("customerIndex", "Customer", "symbol:456", 0);
+    queryByStringQueryParser("customerIndex", "Customer", "symbol:123", 0, "name");
+    queryByStringQueryParser("customerIndex", "Customer", "symbol:456", 0, "name");
     
-    queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0);
+    queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0, "name");
     queryByIntRange("pageIndex", "Page", "id", 100, 102);
 
     System.out.println("\nExamples of QueryProvider");
@@ -445,11 +451,11 @@ public class Main {
 
     // cross regions:
     // query analyzerIndex to find a Person with address:97763, then use Person's name to find the Customer
-    HashSet persons = queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0);
+    HashSet persons = queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0, "name");
     for (Object value:persons) {
       if (value instanceof Person) {
         Person person = (Person)value;
-        HashSet customers = queryByStringQueryParser("customerIndex", "Customer", "\""+person.getName()+"\"", 0);
+        HashSet customers = queryByStringQueryParser("customerIndex", "Customer", "\""+person.getName()+"\"", 0, "name");
         for (Object c:customers) {
           System.out.println("Found a customer:"+c);
         }
@@ -465,9 +471,19 @@ public class Main {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
-    queryByStringQueryParser("analyzerIndex", "Person", "name:Stephen", 5);
+    queryByStringQueryParser("analyzerIndex", "Person", "name:Stephen", 5, "name");
     
-    queryByStringQueryParser("analyzerIndex", "Person", "name:Ste*", 5);
+    queryByStringQueryParser("analyzerIndex", "Person", "name:Ste*", 5, "name");
+
+    // Query nested object using FlatFormatSerializer
+//    queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0);
+//    queryByIntRange("pageIndex", "Page", "id", 100, 102);
+    
+    System.out.println("Query using FlatFormatSerializer------------");
+    queryByStringQueryParser("customerIndex", "Customer", "323 OR 320", 5, "myHomePages.content");
+    queryByStringQueryParser("customerIndex", "Customer", "Tom323", 5, "contacts.name");
+    queryByStringQueryParser("customerIndex", "Customer", "tzhou323@example.com", 5, "contacts.email");
+    queryByStringQueryParser("customerIndex", "Customer", "manager", 5, "contacts.homepage.title");
   }
   
   public void doClientFunction() {
@@ -713,9 +729,9 @@ public class Main {
     return values;
   }
 
-  private HashSet queryByStringQueryParser(String indexName, String regionName, String queryString, int pageSize) throws LuceneQueryException {
-    System.out.println("\nQuery string is:"+queryString);
-    LuceneQuery query = service.createLuceneQueryFactory().setPageSize(pageSize).create(indexName, regionName, queryString, "name");
+  private HashSet queryByStringQueryParser(String indexName, String regionName, String queryString, int pageSize, String defaultField) throws LuceneQueryException {
+    System.out.println("\nQuery string is:"+defaultField+":"+queryString);
+    LuceneQuery query = service.createLuceneQueryFactory().setPageSize(pageSize).create(indexName, regionName, queryString, defaultField);
 
     return getResults(query, regionName);
   }
