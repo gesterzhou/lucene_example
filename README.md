@@ -420,3 +420,10 @@ export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 
 The client will call function "LuceneSearchIndexFunction" at server and display results at client.
 
+=============
+Part-5: reindex
+# create data region only
+./gradlew run -PappArgs="[7, false]"
+
+# create index and reindex
+./gradlew run -PappArgs="[8, false]"

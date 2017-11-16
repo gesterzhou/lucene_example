@@ -43,7 +43,7 @@ import org.apache.geode.cache.execute.Execution;
 import org.apache.geode.cache.execute.Function;
 import org.apache.geode.cache.execute.FunctionService;
 import org.apache.geode.cache.execute.ResultCollector;
-import org.apache.geode.cache.lucene.FlatFormatSerializer;
+//import org.apache.geode.cache.lucene.FlatFormatSerializer;
 import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.cache.lucene.LuceneQuery;
 import org.apache.geode.cache.lucene.LuceneQueryException;
@@ -302,7 +302,7 @@ public class Main {
       .addField("contacts.address").addField("contacts.homepage.title")
       .addField("contact.homepage.id")
       .addField(LuceneService.REGION_VALUE_FIELD)
-      .setLuceneSerializer(new FlatFormatSerializer())
+//      .setLuceneSerializer(new FlatFormatSerializer())
       .create("customerIndex", "Customer");
       CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
 
@@ -318,7 +318,7 @@ public class Main {
     }
     PersonRegion = ((Cache)cache).createRegionFactory(shortcut).create("Person");
     if (PersonRegion.size() == count) {
-//      reindex("personIndex", "Person");
+      reindex("personIndex", "Person");
     } else {
       for (int i=0; i<count; i++) {
         PersonRegion.put("key"+i, new Person(i));
@@ -326,55 +326,56 @@ public class Main {
     }
   }
   
-//  private void reindex(String indexName, String regionName) {
-//    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex("personIndex", "Person");
-//    if (index == null) {
-//      System.out.println("Index not exist");
-//      return;
-//    }
-//    PartitionedRegion pr = (PartitionedRegion)cache.getRegion(regionName);
-//    if (pr == null) {
-//      System.out.println("Region "+regionName+" not exist");
-//      return;
-//    }
-//    int count = pr.size();
-//    if (count == 0) {
-//      System.out.println("Region "+regionName+" is empty");
-//      return;
-//    }
-//    
-//    PartitionedRepositoryManager repositoryManager = (PartitionedRepositoryManager)index.getRepositoryManager();
-//    Iterator it = pr.entrySet().iterator();
-//    int cnt = 0;
-//    try {
-//      while (it.hasNext()) {
-//        EntrySnapshot mapEntry = (EntrySnapshot)it.next();
-//        Object key = mapEntry.getKey();
-//        Object value = mapEntry.getRawValue();
-//        IndexRepository repository = repositoryManager.getRepository(pr, key, null);
-//        if (value != null) {
-//          repository.update(key, value);
-//        } else {
-//          repository.delete(key);
-//        }
-//        if (count % 100 == 0) {
-//          refreshAndCommit(repositoryManager, pr);
-//        }
-//      }
-//      refreshAndCommit(repositoryManager, pr);
-//    }
-//    catch (BucketNotFoundException e) {
-//    }
-//    catch (IOException e) {
-//    }
-//  }
-//
-//  private void refreshAndCommit(PartitionedRepositoryManager repositoryManager, PartitionedRegion pr) throws BucketNotFoundException, IOException {
-//    for (int bucketId:pr.getDataStore().getAllLocalBucketIds()) {
-//      IndexRepository repo = repositoryManager.getRepository(bucketId);
-//      repo.commit();
-//    }
-//  }
+  private void reindex(String indexName, String regionName) {
+    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex("personIndex", "Person");
+    if (index == null) {
+      System.out.println("Index not exist");
+      return;
+    }
+    PartitionedRegion pr = (PartitionedRegion)cache.getRegion(regionName);
+    if (pr == null) {
+      System.out.println("Region "+regionName+" not exist");
+      return;
+    }
+    int count = pr.size();
+    if (count == 0) {
+      System.out.println("Region "+regionName+" is empty");
+      return;
+    }
+    
+    PartitionedRepositoryManager repositoryManager = (PartitionedRepositoryManager)index.getRepositoryManager();
+    HashSet<IndexRepository> repositories = new HashSet();
+    Iterator it = pr.entrySet().iterator();
+    int cnt = 0;
+    try {
+      while (it.hasNext()) {
+        EntrySnapshot mapEntry = (EntrySnapshot)it.next();
+        Object key = mapEntry.getKey();
+        Object value = mapEntry.getRawValue();
+        IndexRepository repository = repositoryManager.getRepository(pr, key, null);
+        if (value != null) {
+          repository.update(key, value);
+        } else {
+          repository.delete(key);
+        }
+        repositories.add(repository);
+        if (count % 100 == 0) {
+          refreshAndCommit(repositories, pr);
+        }
+      }
+      refreshAndCommit(repositories, pr);
+    }
+    catch (BucketNotFoundException e) {
+    }
+    catch (IOException e) {
+    }
+  }
+
+  private void refreshAndCommit(HashSet<IndexRepository> repositories, PartitionedRegion pr) throws BucketNotFoundException, IOException {
+    for (IndexRepository repo:repositories) {
+      repo.commit();
+    }
+  }
   
   private void createIndexAndRegionForServiceRequest(RegionShortcut shortcut) throws FileNotFoundException, java.text.ParseException {
     service.createIndexFactory().addField("uniqueKey").addField("createdDate")
