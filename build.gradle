@@ -54,9 +54,9 @@ dependencies {
     // compile "io.pivotal.gemfire:geode-core:9.2.0"
     // compile "io.pivotal.gemfire:geode-lucene:9.2.0"
 
-    // If using develop version (geode 1.4.0)
-    compile "org.apache.geode:geode-core:1.4.0-SNAPSHOT"
-    compile "org.apache.geode:geode-lucene:1.4.0-SNAPSHOT"
+    // If using develop version (geode 1.6.0)
+    compile "org.apache.geode:geode-core:1.6.0-SNAPSHOT"
+    compile "org.apache.geode:geode-lucene:1.6.0-SNAPSHOT"
 
     // third party 
     compile "org.springframework.shell:spring-shell:1.2.0.RELEASE"

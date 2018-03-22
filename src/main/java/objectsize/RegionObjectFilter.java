@@ -21,7 +21,7 @@ import org.apache.geode.internal.cache.partitioned.RegionAdvisor;
 
 import org.apache.geode.internal.cache.persistence.PersistentMemberManager;
 
-import org.apache.geode.internal.cache.eviction.EvictionStatistics;
+import org.apache.geode.internal.cache.eviction.EvictionStats;
 
 import org.apache.geode.internal.size.ObjectGraphSizer.ObjectFilter;
 
@@ -55,7 +55,7 @@ public class RegionObjectFilter implements ObjectFilter {
 		if (object instanceof Cache
 				|| object instanceof Class
 				|| object instanceof CachePerfStats
-				|| object instanceof EvictionStatistics
+				|| object instanceof EvictionStats
 				|| object instanceof DiskRegionStats
 				|| object instanceof DistributedLockService
 				|| object instanceof PersistentMemberManager
