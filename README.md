@@ -33,8 +33,11 @@ The simplest way to run is run a standalone test:
 
 cd ./lucene_example
 ./gradlew run
+./gradlew run -Dgemfire.non-replicated-tombstone-timeout=48000
 or
 ./gradlew run -PappArgs="[1, false]"
+
+./gradlew run -PappArgs="[5, false, 3]"
 
 There're following standalone tests:
 1) stand alone server with feeder

@@ -22,6 +22,7 @@ import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.analysis.core.LowerCaseFilter;
 import org.apache.lucene.analysis.util.CharTokenizer;
 import org.apache.lucene.queryparser.classic.ParseException;
+import static org.apache.geode.distributed.ConfigurationProperties.OFF_HEAP_MEMORY_SIZE;
 
 import loader.Loader;
 import objectsize.ObjectSizer;
@@ -29,10 +30,13 @@ import objectsize.ObjectSizer;
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.CacheFactory;
 import org.apache.geode.cache.DataPolicy;
+import org.apache.geode.cache.EvictionAction;
+import org.apache.geode.cache.EvictionAttributes;
 import org.apache.geode.cache.GemFireCache;
 import org.apache.geode.cache.Region;
 import org.apache.geode.cache.RegionFactory;
 import org.apache.geode.cache.RegionShortcut;
+import org.apache.geode.cache.asyncqueue.internal.AsyncEventQueueImpl;
 import org.apache.geode.cache.client.ClientCache;
 import org.apache.geode.cache.client.ClientCacheFactory;
 import org.apache.geode.cache.client.ClientRegionFactory;
@@ -60,8 +64,10 @@ import org.apache.geode.cache.lucene.internal.repository.RepositoryManager;
 import org.apache.geode.distributed.ServerLauncher;
 import org.apache.geode.distributed.ServerLauncher.Builder;
 import org.apache.geode.internal.DSFIDFactory;
+import org.apache.geode.internal.ProcessOutputReader;
 import org.apache.geode.internal.cache.BucketNotFoundException;
 import org.apache.geode.internal.cache.EntrySnapshot;
+import org.apache.geode.internal.cache.EvictionAttributesImpl;
 import org.apache.geode.internal.cache.LocalRegion;
 import org.apache.geode.internal.cache.PartitionedRegion;
 import org.apache.geode.internal.cache.RegionEntry;
@@ -79,7 +85,7 @@ public class Main {
   static int serverPort = 50505;
   static boolean useLocator = false;
 
-  final static int ENTRY_COUNT = 1000;
+  final static int ENTRY_COUNT = 1000000;
   final static Logger logger = LogService.getLogger();
 
   final static int SERVER_WITH_FEEDER = 1;
@@ -93,6 +99,9 @@ public class Main {
   static int instanceType = CALCULATE_SIZE;
   
   private static String FILE_LOCATION = "./311-sample.csv";
+  // 1: persist normal, 2: persist overflow; 
+  // 3: non-persist normal; 4: non-persist overflow
+  private static int opType = 1; 
   Region ServiceRequestRegion;
   Loader loader;
   
@@ -113,6 +122,9 @@ public class Main {
       }
       if (args.length > 2) {
         FILE_LOCATION = args[2];
+      }
+      if (args.length > 2) {
+        opType = Integer.valueOf(args[2]);
       }
       serverPort += instanceType;
       
@@ -165,7 +177,11 @@ public class Main {
           
         case CALCULATE_SIZE:
           prog.createCache(serverPort);
-          prog.createIndexAndRegions(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT);        
+          if (opType == 1 || opType == 2) { // persistent
+            prog.createIndexAndRegions(RegionShortcut.PARTITION_PERSISTENT);
+          } else {
+            prog.createIndexAndRegions(RegionShortcut.PARTITION);            
+          }
 
           long then = System.currentTimeMillis();
           prog.feed(ENTRY_COUNT);
@@ -174,7 +190,31 @@ public class Main {
           
           // calculate region size
           prog.calculateSize("personIndex", "Person");
-          prog.doDump("personIndex", "Person");
+//          prog.doDump("personIndex", "Person");
+//          prog.doQuery();
+          
+          Process process = null;
+          try {
+            process = Runtime.getRuntime().exec("cp ./server1.gfs ./server1.bak"+opType);
+          } catch (IOException e) {
+            System.out.println("GGG:"+e.getMessage());
+            break;
+          }
+          ProcessOutputReader reader = new ProcessOutputReader(process);
+          String output = reader.getOutput();
+          if (output != null) {
+            output = output.trim();
+          }
+          int exitCode = reader.getExitCode();
+          if (exitCode != 0) {
+            String s = output + "\n\nCommand failed with exit code: " + exitCode;
+          } else {
+            System.out.println("Moved: "+output);
+          }
+          Thread.sleep(50000);
+          System.out.println("After sleep 48 seconds");
+          prog.calculateSize("personIndex", "Person");
+          
           break;
 
         case LOAD_USER_DATA:
@@ -204,8 +244,8 @@ public class Main {
           break;
       }
       
-      System.out.println("Press any key to exit");
-      int c = System.in.read();
+//      System.out.println("Press any key to exit");
+//      int c = System.in.read();
 
     } finally {
       prog.stopServer();
@@ -233,14 +273,20 @@ public class Main {
     Builder builder = new ServerLauncher.Builder()
         .setMemberName("server"+port)
         .setServerPort(port)
-        .setPdxPersistent(true)
-        .set("mcast-port", "0")
-        .set("enable-time-statistics","true")
-        .set("statistic-sample-rate","1000")
-        .set("statistic-sampling-enabled", "true")
-        .set("statistic-archive-file", "server1.gfs");
-    //        .set("log-level", "debug")
-    ;
+    .set("mcast-port", "0")
+    .set("enable-time-statistics","true")
+    .set("statistic-sample-rate","1000")
+    .set("statistic-sampling-enabled", "true")
+//    .set(OFF_HEAP_MEMORY_SIZE, "500m")
+    .set("statistic-archive-file", "server1.gfs");
+//        .set("log-level", "debug")
+;
+    if (opType == 1 || opType == 2) { // persistent
+      builder.setPdxPersistent(true);
+    } else {
+      builder.setPdxPersistent(false);
+    }
+    System.setProperty("gemfire.non-replicated-tombstone-timeout", "47000");
 
     if (instanceType != CLIENT) {
       builder.set("start-dev-rest-api", "true")
@@ -291,7 +337,13 @@ public class Main {
 
     // create an index using standard analyzer on region /Person
     service.createIndexFactory().setFields("name", "email", "address", "revenue").create("personIndex", "Person");
-    PersonRegion = ((Cache)cache).createRegionFactory(shortcut).create("Person");
+    EvictionAttributes ev = new EvictionAttributesImpl().createLRUEntryAttributes(1, EvictionAction.OVERFLOW_TO_DISK);
+    RegionFactory factory = ((Cache)cache).createRegionFactory(shortcut);
+
+    if (opType == 2 || opType == 4) { // overflow
+          factory.setEvictionAttributes(ev);
+    }
+          PersonRegion = factory.create("Person");
 
     if (instanceType != CALCULATE_SIZE) {
       // create an index using standard analyzer on region /Customer
@@ -415,10 +467,12 @@ public class Main {
 
   public void doQuery() throws LuceneQueryException {
     System.out.println("Regular query on standard analyzer:");
-    queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 0, "name");
     
+    if (instanceType != CALCULATE_SIZE) {
     System.out.println("\nUse customized analyzer to tokenize by '_'");
     queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0, "name");
+    }
     System.out.println("\nCompare with standard analyzer");
     queryByStringQueryParser("personIndex", "Person", "address:97763", 0, "name");
 
@@ -432,6 +486,7 @@ public class Main {
     queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~1", 0, "name");
     queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~2", 0, "name");
 
+    if (instanceType != CALCULATE_SIZE) {
     System.out.println("\nQuery with composite condition");
     queryByStringQueryParser("analyzerIndex", "Person", "name:Tom999* OR address:97763", 0, "name");
 
@@ -445,10 +500,10 @@ public class Main {
     System.out.println("\nExamples of QueryProvider");
     queryByIntRange("customerIndex", "Customer", "SSN", 995, Integer.MAX_VALUE);
     
-    System.out.println("\nExamples of ToParentBlockJoin query provider");
-    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou11*", "email");
-
-    queryByGrandChildJoinQuery("customerIndex", "Customer", "symbol", "name", "title", "email:tzhou12*", "PivotalPage123*");
+//    System.out.println("\nExamples of ToParentBlockJoin query provider");
+//    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou11*", "email");
+//
+//    queryByGrandChildJoinQuery("customerIndex", "Customer", "symbol", "name", "title", "email:tzhou12*", "PivotalPage123*");
 
     // cross regions:
     // query analyzerIndex to find a Person with address:97763, then use Person's name to find the Customer
@@ -462,6 +517,7 @@ public class Main {
         }
       }
     }
+    }
 
     System.out.println("Regular query on soundex analyzer: double metaphone");
 //    insertSoundexNames(PersonRegion);
@@ -472,19 +528,19 @@ public class Main {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
-    queryByStringQueryParser("analyzerIndex", "Person", "name:Stephen", 5, "name");
-    
-    queryByStringQueryParser("analyzerIndex", "Person", "name:Ste*", 5, "name");
+//    queryByStringQueryParser("analyzerIndex", "Person", "name:Stephen", 5, "name");
+//    
+//    queryByStringQueryParser("analyzerIndex", "Person", "name:Ste*", 5, "name");
 
     // Query nested object using FlatFormatSerializer
 //    queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0);
 //    queryByIntRange("pageIndex", "Page", "id", 100, 102);
     
-    System.out.println("Query using FlatFormatSerializer------------");
-    queryByStringQueryParser("customerIndex", "Customer", "323 OR 320", 5, "myHomePages.content");
-    queryByStringQueryParser("customerIndex", "Customer", "Tom323", 5, "contacts.name");
-    queryByStringQueryParser("customerIndex", "Customer", "tzhou323@example.com", 5, "contacts.email");
-    queryByStringQueryParser("customerIndex", "Customer", "manager", 5, "contacts.homepage.title");
+//    System.out.println("Query using FlatFormatSerializer------------");
+//    queryByStringQueryParser("customerIndex", "Customer", "323 OR 320", 5, "myHomePages.content");
+//    queryByStringQueryParser("customerIndex", "Customer", "Tom323", 5, "contacts.name");
+//    queryByStringQueryParser("customerIndex", "Customer", "tzhou323@example.com", 5, "contacts.email");
+//    queryByStringQueryParser("customerIndex", "Customer", "manager", 5, "contacts.homepage.title");
   }
   
   public void doClientFunction() {
@@ -566,8 +622,13 @@ public class Main {
  
     if (index != null) {
       PartitionedRegion indexPr = index.getFileAndChunkRegion();
-      long indexRegionSize = ObjectSizer.calculateSize(region, false);
+      long indexRegionSize = ObjectSizer.calculateSize(index, false);
       System.out.println("index size is "+indexRegionSize/1000+"KB");
+      
+      String aeqId = LuceneServiceImpl.getUniqueIndexName(indexName, regionName);
+      AsyncEventQueueImpl queue = (AsyncEventQueueImpl) ((Cache)cache).getAsyncEventQueue(aeqId);
+      long aeqSize = ObjectSizer.calculateSize(queue.getSender(), false);
+      System.out.println("AEQ size is "+aeqSize/1000+"KB");
     }
   }
   
@@ -689,16 +750,16 @@ public class Main {
 
     PageableLuceneQueryResults<Object, Object> results = query.findPages();
     if (results.size() >0 ) {
-      System.out.println("Search found "+results.size()+" rows in "+regionName);
+      System.out.println("Search found "+results.size()+" pages in "+regionName);
     }
 
     HashSet values = new HashSet<>();
     int pageno = 0;
-    if (results.size() < 20) {
+//    if (results.size() < 20) {
     final AtomicInteger cnt = new AtomicInteger(0);
     while(results.hasNext()) {
       if (query.getPageSize() != 0) {
-        System.out.println("Page:"+pageno+" starts here ------------");
+//        System.out.println("Page:"+pageno+" starts here ------------");
       }
       results.next().stream()
       .forEach(struct -> {
@@ -706,16 +767,16 @@ public class Main {
         if (value instanceof PdxInstance) {
           PdxInstance pdx = (PdxInstance)value;
           String jsonString = JSONFormatter.toJSON(pdx);
-          System.out.println("Found a json object:"+jsonString);
+//          System.out.println("Found a json object:"+jsonString);
           values.add(pdx);
         } else {
-          System.out.println("No: "+cnt.get()+":key="+struct.getKey()+",value="+value+",score="+struct.getScore());
+//          System.out.println("No: "+cnt.get()+":key="+struct.getKey()+",value="+value+",score="+struct.getScore());
           values.add(value);
         }
         cnt.incrementAndGet();
       });
       if (query.getPageSize() != 0) {
-        System.out.println("Page:"+pageno+" ends here, press any key to show next page ------------");
+//        System.out.println("Page:"+pageno+" ends here, press any key to show next page ------------");
         try {
           int c = System.in.read();
         }
@@ -726,36 +787,46 @@ public class Main {
       }
       pageno++;
     }
-    }
+//    }
+    System.out.println("Search found "+values.size()+" results in "+regionName);
     return values;
   }
 
   private HashSet queryByStringQueryParser(String indexName, String regionName, String queryString, int pageSize, String defaultField) throws LuceneQueryException {
     System.out.println("\nQuery string is:"+defaultField+":"+queryString);
+    HashSet results = null;
+    long then = System.currentTimeMillis();
+//  for (int i=0; i<100; i++) {
+
     LuceneQuery query = service.createLuceneQueryFactory().setPageSize(pageSize).create(indexName, regionName, queryString, defaultField);
 
-    return getResults(query, regionName);
+    results = getResults(query, regionName);
+//  }
+    System.out.println("Query took "+(System.currentTimeMillis() - then));
+    return results;
   }
 
   private void queryByIntRange(String indexName, String regionName, String fieldName, int lowerValue, int upperValue) throws LuceneQueryException {
     System.out.println("\nQuery range is:"+fieldName+":["+lowerValue+" TO "+upperValue+"]");
+    long then = System.currentTimeMillis();
     IntRangeQueryProvider provider = new IntRangeQueryProvider(fieldName, lowerValue, upperValue);
     LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
 
-    getResults(query, regionName);
+    HashSet results = getResults(query, regionName);
+    System.out.println("Query took "+(System.currentTimeMillis() - then));
   }
   
-  private HashSet queryByJoinQuery(String indexName, String regionName, String parentField, String parentFilter, String childQueryString, String childField) throws LuceneQueryException {
-    ToParentBlockJoinQueryProvider provider = new ToParentBlockJoinQueryProvider(parentField, parentFilter, childQueryString, childField);
-    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
-
-    return getResults(query, regionName);
-  }
-  
-  private HashSet queryByGrandChildJoinQuery(String indexName, String regionName, String parentDefaultField, String childDefaultField, String grandChildDefaultField, String queryOnChild, String queryOnGrandChild) throws LuceneQueryException {
-    ToGrandParentBlockJoinQueryProvider provider = new ToGrandParentBlockJoinQueryProvider(parentDefaultField, childDefaultField, grandChildDefaultField, queryOnChild, queryOnGrandChild);
-    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
-
-    return getResults(query, regionName);
-  }
+//  private HashSet queryByJoinQuery(String indexName, String regionName, String parentField, String parentFilter, String childQueryString, String childField) throws LuceneQueryException {
+//    ToParentBlockJoinQueryProvider provider = new ToParentBlockJoinQueryProvider(parentField, parentFilter, childQueryString, childField);
+//    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
+//
+//    return getResults(query, regionName);
+//  }
+//  
+//  private HashSet queryByGrandChildJoinQuery(String indexName, String regionName, String parentDefaultField, String childDefaultField, String grandChildDefaultField, String queryOnChild, String queryOnGrandChild) throws LuceneQueryException {
+//    ToGrandParentBlockJoinQueryProvider provider = new ToGrandParentBlockJoinQueryProvider(parentDefaultField, childDefaultField, grandChildDefaultField, queryOnChild, queryOnGrandChild);
+//    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
+//
+//    return getResults(query, regionName);
+//  }
 }
