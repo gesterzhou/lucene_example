@@ -244,8 +244,8 @@ public class Main {
           break;
       }
       
-//      System.out.println("Press any key to exit");
-//      int c = System.in.read();
+      System.out.println("Press any key to exit");
+      int c = System.in.read();
 
     } finally {
       prog.stopServer();

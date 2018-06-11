@@ -243,9 +243,9 @@ gfsh>deploy --jar=/Users/gzhou/lucene_demo/server/lucene_example/build/libs/luce
 server50505 | lucene_example-0.0.1.jar | /Users/gzhou/lucene_demo/locator/server50505/vf.gf#lucene_example-0.0.1.jar#1
 
 
-create lucene index --name=analyzerIndex --region=/Person --field=name,email,address,revenue --analyzer=DEFAULT,org.apache.lucene.analysis.core.KeywordAnalyzer,examples.MyCharacterAnalyzer,DEFAULT
+create lucene index --name=analyzerIndex --region=/Person --field=name,email,address,revenue --analyzer=DEFAULT,org.apache.lucene.analysis.core.KeywordAnalyzer,examples.MyCharacterAnalyzer,DEFAULT 
 create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue
-create lucene index --name=customerIndex --region=/Customer --field=symbol,revenue,SSN,name,email,address,__REGION_VALUE_FIELD
+create lucene index --name=customerIndex --region=/Customer --field=contacts.email,myHomePages.content,contacts.name,contacts.phoneNumbers,contacts.homepage.title,name,phoneNumers --analyzer=org.apache.lucene.analysis.core.KeywordAnalyzer,DEFAULT,DEFAULT,DEFAULT,DEFAULT,DEFAULT,DEFAULT --serializer=org.apache.geode.cache.lucene.FlatFormatSerializer
 create lucene index --name=pageIndex --region=/Page --field=id,title,content
 create region --name=Person --type=PARTITION_REDUNDANT_PERSISTENT
 create region --name=Customer --type=PARTITION_REDUNDANT_PERSISTENT
@@ -321,6 +321,37 @@ key490 | Person{name='Tom490 Zhou', email='tzhou490@example.com', address='490 L
 
 Note: found a lot due to search by "example.com", because personIndex is using standard analyzer for field "email".
 
+# query using nested object 
+gfsh>search lucene --name=customerIndex --region=/Customer --defaultField=contacts.phoneNumbers --queryStrings="5036331123 OR 5036341456"
+    key     |                                                                         value                                                                          | score
+----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------
+customer123 | Customer{name='Tom123 Zhou'symbol='123', revenue=123000, SSN=123, phoneNumbers=[5035331123, 5035341123], contacts='[Person{name='Tom123 Zhou', email.. | 3.7220657
+customer456 | Customer{name='Tom456 Zhou'symbol='456', revenue=456000, SSN=456, phoneNumbers=[5035331456, 5035341456], contacts='[Person{name='Tom456 Zhou', email.. | 3.7125714
+key123      | Customer{name='Tom123 Zhou'symbol='123', revenue=123000, SSN=123, phoneNumbers=[5035331123, 5035341123], contacts='[Person{name='Tom123 Zhou', email.. | 3.7125714
+key456      | Customer{name='Tom456 Zhou'symbol='456', revenue=456000, SSN=456, phoneNumbers=[5035331456, 5035341456], contacts='[Person{name='Tom456 Zhou', email.. | 3.6932755
+
+Note: Found 4 items since phone number 5036331123 and 5036341456 belong to different persons
+
+
+gfsh>search lucene --name=customerIndex --region=/Customer --defaultField=contacts.phoneNumbers --queryStrings="5036331123 AND 5036341456"
+No results
+
+gfsh>search lucene --name=customerIndex --region=/Customer --defaultField=myHomePages.content --queryStrings="323 OR 320"
+ key   |                                                                            value                                                                            | score
+------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------
+key320 | Customer{name='Tom320 Zhou'symbol='320', revenue=320000, SSN=320, phoneNumbers=[5035331320, 5035341320], contacts='[Person{name='Tom320 Zhou', email='tzh.. | 3.6412902
+key323 | Customer{name='Tom323 Zhou'symbol='323', revenue=323000, SSN=323, phoneNumbers=[5035331323, 5035341323], contacts='[Person{name='Tom323 Zhou', email='tzh.. | 3.6318784
+
+gfsh>search lucene --name=customerIndex --region=/Customer --defaultField=contacts.name --queryStrings=Tom323
+ key   |                                                                            value                                                                            | score
+------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------
+key323 | Customer{name='Tom323 Zhou'symbol='323', revenue=323000, SSN=323, phoneNumbers=[5035331323, 5035341323], contacts='[Person{name='Tom323 Zhou', email='tzh.. | 3.7029753
+
+gfsh>search lucene --name=customerIndex --region=/Customer --defaultField=contacts.email --queryStrings=tzhou323@example.com
+ key   |                                                                            value                                                                            | score
+------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------
+key323 | Customer{name='Tom323 Zhou'symbol='323', revenue=323000, SSN=323, phoneNumbers=[5035331323, 5035341323], contacts='[Person{name='Tom323 Zhou', email='tzh.. | 4.1271343
+Note: Keyword analyzer also worked for nested field
 
 step 4: query from client
 -------------------------
