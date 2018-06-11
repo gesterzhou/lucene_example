@@ -47,7 +47,7 @@ import org.apache.geode.cache.execute.Execution;
 import org.apache.geode.cache.execute.Function;
 import org.apache.geode.cache.execute.FunctionService;
 import org.apache.geode.cache.execute.ResultCollector;
-//import org.apache.geode.cache.lucene.FlatFormatSerializer;
+import org.apache.geode.cache.lucene.FlatFormatSerializer;
 import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.cache.lucene.LuceneQuery;
 import org.apache.geode.cache.lucene.LuceneQueryException;
@@ -85,7 +85,7 @@ public class Main {
   static int serverPort = 50505;
   static boolean useLocator = false;
 
-  final static int ENTRY_COUNT = 1000000;
+  final static int ENTRY_COUNT = 10000;
   final static Logger logger = LogService.getLogger();
 
   final static int SERVER_WITH_FEEDER = 1;
@@ -197,7 +197,7 @@ public class Main {
           try {
             process = Runtime.getRuntime().exec("cp ./server1.gfs ./server1.bak"+opType);
           } catch (IOException e) {
-            System.out.println("GGG:"+e.getMessage());
+            System.out.println(e.getMessage());
             break;
           }
           ProcessOutputReader reader = new ProcessOutputReader(process);
@@ -354,7 +354,7 @@ public class Main {
       .addField("contacts.address").addField("contacts.homepage.title")
       .addField("contact.homepage.id")
       .addField(LuceneService.REGION_VALUE_FIELD)
-//      .setLuceneSerializer(new FlatFormatSerializer())
+      .setLuceneSerializer(new FlatFormatSerializer())
       .create("customerIndex", "Customer");
       CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
 
@@ -499,7 +499,7 @@ public class Main {
 
     System.out.println("\nExamples of QueryProvider");
     queryByIntRange("customerIndex", "Customer", "SSN", 995, Integer.MAX_VALUE);
-    
+
 //    System.out.println("\nExamples of ToParentBlockJoin query provider");
 //    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou11*", "email");
 //
@@ -520,7 +520,7 @@ public class Main {
     }
 
     System.out.println("Regular query on soundex analyzer: double metaphone");
-//    insertSoundexNames(PersonRegion);
+    insertSoundexNames(PersonRegion);
     try {
       waitUntilFlushed("personIndex", "Person");
     }
@@ -528,19 +528,23 @@ public class Main {
       // TODO Auto-generated catch block
       e.printStackTrace();
     }
-//    queryByStringQueryParser("analyzerIndex", "Person", "name:Stephen", 5, "name");
-//    
-//    queryByStringQueryParser("analyzerIndex", "Person", "name:Ste*", 5, "name");
-
-    // Query nested object using FlatFormatSerializer
-//    queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0);
-//    queryByIntRange("pageIndex", "Page", "id", 100, 102);
+    queryByStringQueryParser("analyzerIndex", "Person", "name:Stephen", 5, "name");
     
-//    System.out.println("Query using FlatFormatSerializer------------");
-//    queryByStringQueryParser("customerIndex", "Customer", "323 OR 320", 5, "myHomePages.content");
-//    queryByStringQueryParser("customerIndex", "Customer", "Tom323", 5, "contacts.name");
-//    queryByStringQueryParser("customerIndex", "Customer", "tzhou323@example.com", 5, "contacts.email");
-//    queryByStringQueryParser("customerIndex", "Customer", "manager", 5, "contacts.homepage.title");
+    queryByStringQueryParser("analyzerIndex", "Person", "name:Ste*", 5, "name");
+
+    queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0, "symbol");
+    queryByIntRange("pageIndex", "Page", "id", 100, 102);
+
+    // Query nested object using FlatFormatSerializer   
+    System.out.println("Query using FlatFormatSerializer------------");
+    System.out.println("\nNested Object query with phone numbers from 2 persons");    
+    queryByStringQueryParser("customerIndex", "Customer", "5036331123 OR 5036341456", 0, "contacts.phoneNumbers");
+    queryByStringQueryParser("customerIndex", "Customer", "5036331123 AND 5036341456", 0, "contacts.phoneNumbers");
+
+    queryByStringQueryParser("customerIndex", "Customer", "323 OR 320", 5, "myHomePages.content");
+    queryByStringQueryParser("customerIndex", "Customer", "Tom323", 5, "contacts.name");
+    queryByStringQueryParser("customerIndex", "Customer", "tzhou323@example.com", 5, "contacts.email");
+    queryByStringQueryParser("customerIndex", "Customer", "manager", 5, "contacts.homepage.title");
   }
   
   public void doClientFunction() {
@@ -755,7 +759,7 @@ public class Main {
 
     HashSet values = new HashSet<>();
     int pageno = 0;
-//    if (results.size() < 20) {
+    if (results.size() < 20) {
     final AtomicInteger cnt = new AtomicInteger(0);
     while(results.hasNext()) {
       if (query.getPageSize() != 0) {
@@ -767,10 +771,10 @@ public class Main {
         if (value instanceof PdxInstance) {
           PdxInstance pdx = (PdxInstance)value;
           String jsonString = JSONFormatter.toJSON(pdx);
-//          System.out.println("Found a json object:"+jsonString);
+          System.out.println("Found a json object:"+jsonString);
           values.add(pdx);
         } else {
-//          System.out.println("No: "+cnt.get()+":key="+struct.getKey()+",value="+value+",score="+struct.getScore());
+          System.out.println("No: "+cnt.get()+":key="+struct.getKey()+",value="+value+",score="+struct.getScore());
           values.add(value);
         }
         cnt.incrementAndGet();
@@ -787,13 +791,13 @@ public class Main {
       }
       pageno++;
     }
-//    }
+    }
     System.out.println("Search found "+values.size()+" results in "+regionName);
     return values;
   }
 
   private HashSet queryByStringQueryParser(String indexName, String regionName, String queryString, int pageSize, String defaultField) throws LuceneQueryException {
-    System.out.println("\nQuery string is:"+defaultField+":"+queryString);
+    System.out.println("\nQuery string is "+queryString+", default field is "+defaultField);
     HashSet results = null;
     long then = System.currentTimeMillis();
 //  for (int i=0; i<100; i++) {

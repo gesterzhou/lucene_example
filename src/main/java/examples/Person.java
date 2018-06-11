@@ -2,6 +2,7 @@ package examples;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Person implements Serializable {
   private String name;
@@ -53,6 +54,7 @@ public class Person implements Serializable {
     sb.append(", address='").append(address).append('\'');
     sb.append(", revenue='").append(revenue).append('\'');
     sb.append(", homepage='").append(homepage).append('\'');
+    sb.append(", phoneNumbers='").append(Arrays.toString(phoneNumbers)).append('\'');
     sb.append('}');
     return sb.toString();
   }
