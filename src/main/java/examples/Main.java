@@ -55,6 +55,7 @@ import org.apache.geode.cache.lucene.LuceneResultStruct;
 import org.apache.geode.cache.lucene.LuceneService;
 import org.apache.geode.cache.lucene.LuceneServiceProvider;
 import org.apache.geode.cache.lucene.PageableLuceneQueryResults;
+import org.apache.geode.cache.lucene.internal.LuceneIndexFactoryImpl;
 import org.apache.geode.cache.lucene.internal.LuceneIndexForPartitionedRegion;
 import org.apache.geode.cache.lucene.internal.LuceneIndexImpl;
 import org.apache.geode.cache.lucene.internal.LuceneServiceImpl;
@@ -96,6 +97,7 @@ public class Main {
   final static int LOAD_USER_DATA = 6;
   final static int CREATE_DATA_ONLY = 7;
   final static int REINDEX = 8;
+  final static int INDEX_AFTER_REGION = 9;
   static int instanceType = CALCULATE_SIZE;
   
   private static String FILE_LOCATION = "./311-sample.csv";
@@ -229,8 +231,9 @@ public class Main {
           // create cache, create index, create region
           // do feed
           // do query
+          prog.service.LUCENE_REINDEX = true;
           prog.createCache(serverPort);
-          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, true);        
+          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, true);
           prog.doASimpleQuery();
           break;
 
@@ -239,9 +242,23 @@ public class Main {
           // do feed
           // do query
           prog.createCache(serverPort);
-          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, false);        
+          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, false);     
           prog.doASimpleQuery();
           break;
+          
+        case INDEX_AFTER_REGION:
+          // create cache, create region, do feed
+          prog.createCache(serverPort);
+          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, true);
+
+          prog.service.LUCENE_REINDEX = true;
+          LuceneIndexFactoryImpl factory = (LuceneIndexFactoryImpl)prog.service.createIndexFactory();
+          System.out.println("Start creating index on existing data...");
+          then = System.currentTimeMillis();
+          factory.setFields("name", "email", "address", "revenue").create("personIndex", "Person", true);
+          System.out.println("Reindex took "+(System.currentTimeMillis() - then)+" ms for "+ENTRY_COUNT+" entries");
+          
+          prog.doASimpleQuery();
       }
       
       System.out.println("Press any key to exit");
@@ -462,7 +479,7 @@ public class Main {
     }
 
     System.out.println("Regular query on standard analyzer:");
-    queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "name:Tom999*", 5, "name");
   }
 
   public void doQuery() throws LuceneQueryException {

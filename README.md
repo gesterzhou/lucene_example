@@ -462,3 +462,44 @@ Part-5: reindex
 
 # create index and reindex
 ./gradlew run -PappArgs="[8, false]"
+
+===============
+Part-6: create index after region with data
+standalone:
+./gradlew run -PappArgs="[9, false]"
+
+use gfsh:
+cd $HOME/lucene_demo/locator
+export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
+$GEMFIRE/bin/gfsh
+
+start locator --name=locator1 --port=12345
+
+configure pdx --disk-store=DEFAULT --read-serialized=true
+start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost --group=group50505 --J='-Dgemfire.luceneReindex=true'
+gfsh > deploy --jar=/Users/gzhou/lucene_demo/server/lucene_example/build/libs/lucene_example-0.0.1.jar --group=group50505
+
+On another window, feed some data:
+./gradlew run -PappArgs="[7, true]"
+
+gfsh> create region --name=Person --type=PARTITION_REDUNDANT_PERSISTENT
+Region /Person already exists on the cluster.
+
+gfsh> create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue
+
+gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="name:Tom999*"
+  key   |                                                                             value                                                                              | score
+------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -----
+key999  | Person{name='Tom999 Zhou', email='tzhou999@example.com', address='999 Lindon St, Portland_OR_97999', revenue='999000', homepage='Page{id=999, title='Pivotal.. | 1
+key9990 | Person{name='Tom9990 Zhou', email='tzhou9990@example.com', address='9990 Lindon St, Portland_OR_106990', revenue='9990000', homepage='Page{id=9990, title='P.. | 1
+key9999 | Person{name='Tom9999 Zhou', email='tzhou9999@example.com', address='9999 Lindon St, Portland_OR_106999', revenue='9999000', homepage='Page{id=9999, title='P.. | 1
+key9991 | Person{name='Tom9991 Zhou', email='tzhou9991@example.com', address='9991 Lindon St, Portland_OR_106991', revenue='9991000', homepage='Page{id=9991, title='P.. | 1
+key9994 | Person{name='Tom9994 Zhou', email='tzhou9994@example.com', address='9994 Lindon St, Portland_OR_106994', revenue='9994000', homepage='Page{id=9994, title='P.. | 1
+key9998 | Person{name='Tom9998 Zhou', email='tzhou9998@example.com', address='9998 Lindon St, Portland_OR_106998', revenue='9998000', homepage='Page{id=9998, title='P.. | 1
+key9995 | Person{name='Tom9995 Zhou', email='tzhou9995@example.com', address='9995 Lindon St, Portland_OR_106995', revenue='9995000', homepage='Page{id=9995, title='P.. | 1
+key9997 | Person{name='Tom9997 Zhou', email='tzhou9997@example.com', address='9997 Lindon St, Portland_OR_106997', revenue='9997000', homepage='Page{id=9997, title='P.. | 1
+key9996 | Person{name='Tom9996 Zhou', email='tzhou9996@example.com', address='9996 Lindon St, Portland_OR_106996', revenue='9996000', homepage='Page{id=9996, title='P.. | 1
+key9993 | Person{name='Tom9993 Zhou', email='tzhou9993@example.com', address='9993 Lindon St, Portland_OR_106993', revenue='9993000', homepage='Page{id=9993, title='P.. | 1
+key9992 | Person{name='Tom9992 Zhou', email='tzhou9992@example.com', address='9992 Lindon St, Portland_OR_106992', revenue='9992000', homepage='Page{id=9992, title='P.. | 1
+
+gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom36* OR Tom422"
