@@ -52,7 +52,7 @@ public class Person implements Serializable {
     sb.append("name='").append(name).append('\'');
     sb.append(", email='").append(email).append('\'');
     sb.append(", address='").append(address).append('\'');
-    sb.append(", revenue='").append(revenue).append('\'');
+    sb.append(", revenue=").append(revenue);
     sb.append(", homepage='").append(homepage).append('\'');
     sb.append(", phoneNumbers='").append(Arrays.toString(phoneNumbers)).append('\'');
     sb.append('}');
