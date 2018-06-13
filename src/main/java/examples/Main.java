@@ -98,6 +98,7 @@ public class Main {
   final static int CREATE_DATA_ONLY = 7;
   final static int REINDEX = 8;
   final static int INDEX_AFTER_REGION = 9;
+  final static int FEED_DATA_THEN_NUMERIC_QUERY = 10;
   static int instanceType = CALCULATE_SIZE;
   
   private static String FILE_LOCATION = "./311-sample.csv";
@@ -259,6 +260,19 @@ public class Main {
           System.out.println("Reindex took "+(System.currentTimeMillis() - then)+" ms for "+ENTRY_COUNT+" entries");
           
           prog.doASimpleQuery();
+          
+        case FEED_DATA_THEN_NUMERIC_QUERY:
+          // create cache, create index, create region
+          // do feed
+          // do query
+          prog.service.LUCENE_REINDEX = true;
+          prog.createCache(serverPort);
+          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, true);
+
+          System.out.println("Press any key to execute numeric query");
+          int c = System.in.read();
+          prog.doNumericQueryWithPointsConfigMap();
+          break;
       }
       
       System.out.println("Press any key to exit");
@@ -307,7 +321,7 @@ public class Main {
 
     if (instanceType != CLIENT) {
       builder.set("start-dev-rest-api", "true")
-      .set("http-service-port","808"+instanceType)
+      .set("http-service-port",""+(8080+instanceType))
       .set("http-service-bind-address", "localhost");
     }
         
@@ -480,6 +494,21 @@ public class Main {
 
     System.out.println("Regular query on standard analyzer:");
     queryByStringQueryParser("personIndex", "Person", "name:Tom999*", 5, "name");
+  }
+  
+  public void doNumericQueryWithPointsConfigMap() throws LuceneQueryException {
+    LuceneIndexImpl index = (LuceneIndexImpl)service.getIndex("personIndex", "Person");
+    if (index == null) {
+      // it's a client
+      return;
+    }
+
+    System.out.println("Query with numeric fields using PointsConfigMap:");
+    queryByStringQueryParser("personIndex", "Person", "revenue=763000", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "revenue=763000 revenue=764000", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "+revenue>763000 +revenue<766000", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "+revenue>=763000 +revenue<=766000", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "revenue<2000 revenue>9997000 -name=Tom9998*", 5, "name");
   }
 
   public void doQuery() throws LuceneQueryException {

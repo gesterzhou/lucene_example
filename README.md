@@ -231,6 +231,7 @@ cd $HOME/lucene_demo/locator
 export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 $GEMFIRE/bin/gfsh
 
+set variable --name=APP_QUIET_EXECUTION --value=true
 start locator --name=locator1 --port=12345
 
 configure pdx --disk-store=DEFAULT --read-serialized=true
@@ -483,7 +484,7 @@ gfsh > deploy --jar=/Users/gzhou/lucene_demo/server/lucene_example/build/libs/lu
 
 step 2:
 On another window, feed some data:
-./gradlew run -PappArgs="[7, true]"
+./gradlew run -PappArgs="[10, true]"
 Note: It specified: prog.service.LUCENE_REINDEX = true in source code.
 
 step 3:
@@ -497,8 +498,6 @@ gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --que
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="Tom36* OR Tom422"
 
 step 4: use StringQueryProvider with PointsConfig
-search lucene --region=/Person --name=personIndex --queryString="+revenue=76300" --defaultField=name
-
 gfsh>search lucene --region=/Person --name=personIndex --queryString="revenue=763000" --defaultField=name
  key   |                                                                                       value                                                                                       | score
 ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -----
