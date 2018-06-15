@@ -260,7 +260,7 @@ public class Main {
           System.out.println("Reindex took "+(System.currentTimeMillis() - then)+" ms for "+ENTRY_COUNT+" entries");
           
           prog.doASimpleQuery();
-          
+          break;
         case FEED_DATA_THEN_NUMERIC_QUERY:
           // create cache, create index, create region
           // do feed
