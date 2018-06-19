@@ -528,6 +528,9 @@ key764 | Person{name='Tom764 Zhou', email='tzhou764@example.com', address='764 L
 key765 | Person{name='Tom765 Zhou', email='tzhou765@example.com', address='765 Lindon St, Portland_OR_97765', revenue=765000, homepage='Page{id=765, title='PivotalPage76.. | 2
 Note: >=, <= are valid syntax for inclusive condition 
 
+gfsh>search lucene --region=/Person --name=personIndex --queryString="revenue:[763000 TO 766000]" --defaultField=name
+Note: the same as --queryString="+revenue>=763000 +revenue<=766000"
+
 gfsh>search lucene --region=/Person --name=personIndex --queryString="revenue<2000 revenue>9997000" --defaultField=name
   key   |                                                                                      value                                                                                       | score
 ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -----

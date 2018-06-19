@@ -260,6 +260,8 @@ public class Main {
           System.out.println("Reindex took "+(System.currentTimeMillis() - then)+" ms for "+ENTRY_COUNT+" entries");
           
           prog.doASimpleQuery();
+          prog.doNumericQueryWithPointsConfigMap();
+
           break;
         case FEED_DATA_THEN_NUMERIC_QUERY:
           // create cache, create index, create region
@@ -508,6 +510,7 @@ public class Main {
     queryByStringQueryParser("personIndex", "Person", "revenue=763000 revenue=764000", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "+revenue>763000 +revenue<766000", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "+revenue>=763000 +revenue<=766000", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "revenue:[763000 TO 766000]", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "revenue<2000 revenue>9997000 -name=Tom9998*", 5, "name");
   }
 
