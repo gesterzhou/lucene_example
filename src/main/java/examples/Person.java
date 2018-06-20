@@ -11,6 +11,9 @@ public class Person implements Serializable {
   private String address;
   private String[] phoneNumbers;
   private Page homepage;
+  private float revenue_float;
+  private double revenue_double;
+  private long revenue_long;
 
   public Person() {}
 
@@ -26,6 +29,9 @@ public class Person implements Serializable {
     this.email = "tzhou"+idx+"@example.com";
     this.address = ""+idx+" Lindon St, Portland_OR_"+(97000+idx);
     this.revenue = idx*1000;
+    this.revenue_float = idx*1000.0f;
+    this.revenue_double = idx*1000.0;
+    this.revenue_long = idx*1000L;
     this.homepage = new Page(idx);
     this.phoneNumbers = new String[] { "503633"+(1000+idx), "503634"+(1000+idx)};
   }

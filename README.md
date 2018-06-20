@@ -491,7 +491,7 @@ step 3:
 gfsh> create region --name=Person --type=PARTITION_REDUNDANT_PERSISTENT
 Region /Person already exists on the cluster.
 
-gfsh> create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue
+gfsh> create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue,revenue_float,revenue_double,revenue_long
 
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="name:Tom999*"
 
@@ -530,6 +530,19 @@ Note: >=, <= are valid syntax for inclusive condition
 
 gfsh>search lucene --region=/Person --name=personIndex --queryString="revenue:[763000 TO 766000]" --defaultField=name
 Note: the same as --queryString="+revenue>=763000 +revenue<=766000"
+gfsh>search lucene --region=/Person --name=personIndex --queryString="revenue_float:[763000.0 TO 766000.0]" --defaultField=name
+gfsh>search lucene --region=/Person --name=personIndex --queryString="revenue_double:[763000 TO 766000]" --defaultField=name
+gfsh>search lucene --region=/Person --name=personIndex --queryString="revenue_long:[763000 TO 766000]" --defaultField=name
+Note: All the 4 numeric types(int, float, double, long) are supported
+
+gfsh>search lucene --region=/Person --name=personIndex --queryString="+revenue_long:[763000 TO 766000] +revenue_float:[762000 TO 765000]" --defaultField=name
+ key   |                                                                                                                         value                                                                                                                          | score
+------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -----
+key763 | Person{name='Tom763 Zhou', email='tzhou763@example.com', address='763 Lindon St, Portland_OR_97763', revenue=763000, homepage='Page{id=763, title='PivotalPage763 developer', content='Hello world no 763'}', phoneNumbers='[5036331763, 5036341763]'} | 2
+key764 | Person{name='Tom764 Zhou', email='tzhou764@example.com', address='764 Lindon St, Portland_OR_97764', revenue=764000, homepage='Page{id=764, title='PivotalPage764 developer', content='Hello world no 764'}', phoneNumbers='[5036331764, 5036341764]'} | 2
+key765 | Person{name='Tom765 Zhou', email='tzhou765@example.com', address='765 Lindon St, Portland_OR_97765', revenue=765000, homepage='Page{id=765, title='PivotalPage765 developer', content='Hello world no 765'}', phoneNumbers='[5036331765, 5036341765]'} | 2
+
+Note: Combination query will return a subset.
 
 gfsh>search lucene --region=/Person --name=personIndex --queryString="revenue<2000 revenue>9997000" --defaultField=name
   key   |                                                                                      value                                                                                       | score

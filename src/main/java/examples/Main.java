@@ -256,7 +256,8 @@ public class Main {
           LuceneIndexFactoryImpl factory = (LuceneIndexFactoryImpl)prog.service.createIndexFactory();
           System.out.println("Start creating index on existing data...");
           then = System.currentTimeMillis();
-          factory.setFields("name", "email", "address", "revenue").create("personIndex", "Person", true);
+          factory.setFields("name", "email", "address", "revenue", "revenue_float", "revenue_double", "revenue_long")
+          .create("personIndex", "Person", true);
           System.out.println("Reindex took "+(System.currentTimeMillis() - then)+" ms for "+ENTRY_COUNT+" entries");
           
           prog.doASimpleQuery();
@@ -511,6 +512,10 @@ public class Main {
     queryByStringQueryParser("personIndex", "Person", "+revenue>763000 +revenue<766000", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "+revenue>=763000 +revenue<=766000", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "revenue:[763000 TO 766000]", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "revenue_float:[763000.0 TO 766000.0]", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "revenue_double:[763000 TO 766000]", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "revenue_long:[763000 TO 766000]", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "+revenue_long:[763000 TO 766000] +revenue_float:[762000 TO 765000]", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "revenue<2000 revenue>9997000 -name=Tom9998*", 5, "name");
   }
 
