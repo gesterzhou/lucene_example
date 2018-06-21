@@ -594,3 +594,11 @@ key1    | Person{name='Tom1 Zhou', email='tzhou1@example.com', address='1 Lindon
 key0    | Person{name='Tom0 Zhou', email='tzhou0@example.com', address='0 Lindon St, Portland_OR_97000', revenue=0, homepage='Page{id=0, title='PivotalPage0 manager', co.. | 1
 Note: name:Tom999* is equivalent to name=Tom999*
 
+gfsh>search lucene --region=/Person --name=personIndex --queryString="revenue=400000" --defaultField=name
+  key    |                                                                                                                           value                                                                                                                            | score
+-------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -----
+jsondoc1 | PDX[8776019,__GEMFIRE_JSON]{address=PDX[16524384,__GEMFIRE_JSON]{city=New York, postalCode=10021, state=NY, streetAddress=21 2nd Street}, age=25, lastName=Smith, name=Tom9_JSON, phoneNumber=[PDX[16427762,__GEMFIRE_JSON]{number=212 555-1234, type=ho.. | 1
+key400   | Person{name='Tom400 Zhou', email='tzhou400@example.com', address='400 Lindon St, Portland_OR_97400', revenue=400000, homepage='Page{id=400, title='PivotalPage400 manager', content='Hello world no 400'}', phoneNumbers='[5036331400, 5036341400]'}       | 1
+
+Note: numeric field in JSON object can also be searched.
+

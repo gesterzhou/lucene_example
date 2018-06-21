@@ -243,7 +243,9 @@ public class Main {
           // do feed
           // do query
           prog.createCache(serverPort);
-          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, false);     
+          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, false);
+          prog.waitUntilFlushed("personIndex", "Person");
+
           prog.doASimpleQuery();
           break;
           
@@ -257,10 +259,16 @@ public class Main {
           System.out.println("Start creating index on existing data...");
           then = System.currentTimeMillis();
           factory.setFields("name", "email", "address", "revenue", "revenue_float", "revenue_double", "revenue_long")
-          .create("personIndex", "Person", true);
+            .create("personIndex", "Person", true);
+          prog.waitUntilFlushed("personIndex", "Person");
           System.out.println("Reindex took "+(System.currentTimeMillis() - then)+" ms for "+ENTRY_COUNT+" entries");
           
           prog.doASimpleQuery();
+          prog.doNumericQueryWithPointsConfigMap();
+          
+          // now put some JSON object and query again, it will show JSON object
+          prog.insertAJson(prog.PersonRegion);
+          prog.waitUntilFlushed("personIndex", "Person");
           prog.doNumericQueryWithPointsConfigMap();
 
           break;
@@ -271,6 +279,8 @@ public class Main {
           prog.service.LUCENE_REINDEX = true;
           prog.createCache(serverPort);
           prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, true);
+          prog.insertAJson(prog.PersonRegion);
+          prog.waitUntilFlushed("personIndex", "Person");
 
           System.out.println("Press any key to execute numeric query");
           int c = System.in.read();
@@ -517,6 +527,7 @@ public class Main {
     queryByStringQueryParser("personIndex", "Person", "revenue_long:[763000 TO 766000]", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "+revenue_long:[763000 TO 766000] +revenue_float:[762000 TO 765000]", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "revenue<2000 revenue>9997000 -name=Tom9998*", 5, "name");
+    queryByStringQueryParser("personIndex", "Person", "revenue=400000", 5, "name");
   }
 
   public void doQuery() throws LuceneQueryException {
@@ -745,7 +756,7 @@ public class Main {
         + "\"name\": \"Tom9_JSON\","
         + "\"lastName\": \"Smith\","
         + " \"age\": 25,"
-        + " \"revenue\": 4000,"
+        + " \"revenue\": 400000,"
         + "\"address\":"
         + "{"
         + "\"streetAddress\": \"21 2nd Street\","
@@ -775,7 +786,7 @@ public class Main {
         + "\"name\": \"Tom99_JSON\","
         + "\"lastName\": \"Smith\","
         + " \"age\": 25,"
-        + " \"revenue\": 4001,"
+        + " \"revenue\": 400001,"
         + "\"address\":"
         + "{"
         + "\"streetAddress\": \"21 2nd Street\","
@@ -824,6 +835,7 @@ public class Main {
         Object value = struct.getValue();
         if (value instanceof PdxInstance) {
           PdxInstance pdx = (PdxInstance)value;
+          Object revenueObj = pdx.getField("revenue");
           String jsonString = JSONFormatter.toJSON(pdx);
           System.out.println("Found a json object:"+jsonString);
           values.add(pdx);
