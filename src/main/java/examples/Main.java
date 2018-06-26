@@ -101,6 +101,17 @@ public class Main {
   final static int FEED_DATA_THEN_NUMERIC_QUERY = 10;
   static int instanceType = CALCULATE_SIZE;
   
+  // test different numeric type
+  final String[] personIndexFields = { "name", "email", "address", "revenue", "revenue_float", 
+      "revenue_double", "revenue_long", LuceneService.REGION_VALUE_FIELD };
+  
+  // test nested object
+  final String[] customerIndexFields = { "name", "symbol", "revenue", "SSN", "phoneNumers", 
+      "myHomePages.content", "contacts.name", "contacts.phoneNumbers", "contacts.address",
+      "contacts.revenue", "contacts.homepage.title", "contact.homepage.id", LuceneService.REGION_VALUE_FIELD };
+  
+  final String[] pageIndexFields = { "id", "title", "content" };
+  
   private static String FILE_LOCATION = "./311-sample.csv";
   // 1: persist normal, 2: persist overflow; 
   // 3: non-persist normal; 4: non-persist overflow
@@ -108,12 +119,6 @@ public class Main {
   Region ServiceRequestRegion;
   Loader loader;
   
-  /* Usage: ~ [1|2|3|4 [isUsingLocator]]
-   * 1: server with feeder
-   * 2: server only 
-   * 3: client
-   * 4: server with feeder using cluster config
-   */
   public static void main(final String[] args) throws LuceneQueryException, IOException, InterruptedException, java.text.ParseException {
     Main prog = new Main();
     try {
@@ -232,7 +237,6 @@ public class Main {
           // create cache, create index, create region
           // do feed
           // do query
-          prog.service.LUCENE_REINDEX = true;
           prog.createCache(serverPort);
           prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, true);
           prog.doASimpleQuery();
@@ -242,45 +246,48 @@ public class Main {
           // create cache, create index, create region
           // do feed
           // do query
-          prog.createCache(serverPort);
-          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, false);
-          prog.waitUntilFlushed("personIndex", "Person");
+          prog.service.LUCENE_REINDEX = false;
+          try {
+            prog.createCache(serverPort);
+            prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, false);
+            prog.waitUntilFlushed("personIndex", "Person");
 
-          prog.doASimpleQuery();
+            prog.doASimpleQuery();
+          } finally {
+            prog.service.LUCENE_REINDEX = true;
+          }
           break;
           
         case INDEX_AFTER_REGION:
           // create cache, create region, do feed
           prog.createCache(serverPort);
-          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, true);
+          prog.PersonRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Person");
+          prog.CustomerRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Customer");
+          prog.PageRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Page");
+          prog.feed(ENTRY_COUNT);
 
-          prog.service.LUCENE_REINDEX = true;
-          LuceneIndexFactoryImpl factory = (LuceneIndexFactoryImpl)prog.service.createIndexFactory();
-          System.out.println("Start creating index on existing data...");
-          then = System.currentTimeMillis();
-          factory.setFields("name", "email", "address", "revenue", "revenue_float", "revenue_double", "revenue_long")
-            .create("personIndex", "Person", true);
+          prog.createPersonIndex();
+          prog.insertPrimitiveTypeValue(prog.PersonRegion);
           prog.waitUntilFlushed("personIndex", "Person");
-          System.out.println("Reindex took "+(System.currentTimeMillis() - then)+" ms for "+ENTRY_COUNT+" entries");
-          
+
+          prog.createCustomerIndex();
+          prog.insertPrimitiveTypeValue(prog.CustomerRegion);
+          prog.waitUntilFlushed("customerIndex", "Customer");
+
           prog.doASimpleQuery();
           prog.doNumericQueryWithPointsConfigMap();
           
-          // now put some JSON object and query again, it will show JSON object
-          prog.insertAJson(prog.PersonRegion);
-          prog.waitUntilFlushed("personIndex", "Person");
-          prog.doNumericQueryWithPointsConfigMap();
-
           break;
         case FEED_DATA_THEN_NUMERIC_QUERY:
           // create cache, create index, create region
           // do feed
           // do query
-          prog.service.LUCENE_REINDEX = true;
+          // create cache, create region, do feed
           prog.createCache(serverPort);
-          prog.createPersonRegionAndFeed(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, ENTRY_COUNT, true);
-          prog.insertAJson(prog.PersonRegion);
-          prog.waitUntilFlushed("personIndex", "Person");
+          prog.PersonRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Person");
+          prog.CustomerRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Customer");
+          prog.PageRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Page");
+          prog.feed(ENTRY_COUNT);
 
           System.out.println("Press any key to execute numeric query");
           int c = System.in.read();
@@ -306,6 +313,7 @@ public class Main {
     PageRegion = crf.create("Page");
     
     service = (LuceneServiceImpl) LuceneServiceProvider.get(cache);
+//    service.LUCENE_REINDEX = true;
   }
   
   private void createCache(int port) {
@@ -353,14 +361,9 @@ public class Main {
       System.out.println("registered function:"+s);
     }
     service = (LuceneServiceImpl) LuceneServiceProvider.get(cache);
+    service.LUCENE_REINDEX = true;
   }
 
-  private void getRegions() {
-    PersonRegion = cache.getRegion("/Person");
-    CustomerRegion = cache.getRegion("/Customer");
-    PageRegion = cache.getRegion("/Page");
-  }
-  
   private void stopServer() {
     if (serverLauncher != null) {
       serverLauncher.stop();
@@ -372,47 +375,74 @@ public class Main {
   private void createIndexAndRegions(RegionShortcut shortcut) {
     if (instanceType != CALCULATE_SIZE) {
       // create an index using several analyzers on region /Person
-      Map<String, Analyzer> fields = new HashMap<String, Analyzer>();
-      fields.put("name",  new DoubleMetaphoneAnalyzer());
-      fields.put("email", new KeywordAnalyzer());
-      fields.put("address", new MyCharacterAnalyzer());
-      service.createIndexFactory().setFields(fields).create("analyzerIndex", "Person");
+      createAnalyzerIndex();
     }
 
     // create an index using standard analyzer on region /Person
-    service.createIndexFactory().setFields("name", "email", "address", "revenue").create("personIndex", "Person");
+    createPersonIndex();
+    
     EvictionAttributes ev = new EvictionAttributesImpl().createLRUEntryAttributes(1, EvictionAction.OVERFLOW_TO_DISK);
     RegionFactory factory = ((Cache)cache).createRegionFactory(shortcut);
-
     if (opType == 2 || opType == 4) { // overflow
-          factory.setEvictionAttributes(ev);
+      factory.setEvictionAttributes(ev);
     }
-          PersonRegion = factory.create("Person");
+    PersonRegion = factory.create("Person");
 
     if (instanceType != CALCULATE_SIZE) {
       // create an index using standard analyzer on region /Customer
-      service.createIndexFactory().addField("name").addField("symbol").addField("revenue").addField("SSN")
-      .addField("phoneNumers").addField("myHomePages.content")
-      .addField("contacts.name").addField("contacts.phoneNumbers")
-      .addField("contacts.email", new KeywordAnalyzer())
-      .addField("contacts.address").addField("contacts.homepage.title")
-      .addField("contact.homepage.id")
-      .addField(LuceneService.REGION_VALUE_FIELD)
-      .setLuceneSerializer(new FlatFormatSerializer())
-      .create("customerIndex", "Customer");
-      CustomerRegion = ((Cache)cache).createRegionFactory(shortcut).create("Customer");
+      createCustomerIndex();
+      CustomerRegion = createRegion(shortcut, "Customer");
 
       // create an index using standard analyzer on region /Page
-      service.createIndexFactory().setFields("id", "title", "content").create("pageIndex", "Page");
-      PageRegion = ((Cache)cache).createRegionFactory(shortcut).create("Page");
+      createPageIndex();
+      PageRegion = createRegion(shortcut, "Page");      
     }
   }
 
+
+  private Region createRegion(RegionShortcut shortcut, String regionName) {
+    Region region = ((Cache)cache).createRegionFactory(shortcut).create(regionName);
+    return region;
+  }
+  
+  private void getRegions() {
+    PersonRegion = cache.getRegion("Person");
+    CustomerRegion = cache.getRegion("Customer");
+    PageRegion = cache.getRegion("Page");
+  }  
+
+  private void createPersonIndex() {
+    LuceneIndexFactoryImpl factory = (LuceneIndexFactoryImpl)service.createIndexFactory();
+    factory.setFields(personIndexFields).create("personIndex", "Person", true);    
+  }
+  
+  private void createAnalyzerIndex() {
+    Map<String, Analyzer> fields = new HashMap<String, Analyzer>();
+    fields.put("name",  new DoubleMetaphoneAnalyzer());
+    fields.put("email", new KeywordAnalyzer());
+    fields.put("address", new MyCharacterAnalyzer());
+    LuceneIndexFactoryImpl factory = (LuceneIndexFactoryImpl)service.createIndexFactory();
+    factory.setFields(fields).create("analyzerIndex", "Person", true);
+  }
+  
+  private void createCustomerIndex() {
+    LuceneIndexFactoryImpl factory = (LuceneIndexFactoryImpl)service.createIndexFactory();
+    factory.setFields(customerIndexFields)
+    .addField("contacts.email", new KeywordAnalyzer())
+    .setLuceneSerializer(new FlatFormatSerializer())
+    .create("customerIndex", "Customer", true);
+  }
+  
+  private void createPageIndex() {
+    LuceneIndexFactoryImpl factory = (LuceneIndexFactoryImpl)service.createIndexFactory();
+    factory.setFields(pageIndexFields).create("pageIndex", "Page");
+  }
+  
   private void createPersonRegionAndFeed(RegionShortcut shortcut, int count, boolean dataRegionOnly) {
     if (!dataRegionOnly) {
-      service.createIndexFactory().setFields("name", "email", "address", "revenue").create("personIndex", "Person");      
+      this.createPersonIndex();
     }
-    PersonRegion = ((Cache)cache).createRegionFactory(shortcut).create("Person");
+    PersonRegion = createRegion(shortcut, "Person");
     if (PersonRegion.size() == count) {
       reindex("personIndex", "Person");
     } else {
@@ -528,6 +558,11 @@ public class Main {
     queryByStringQueryParser("personIndex", "Person", "+revenue_long:[763000 TO 766000] +revenue_float:[762000 TO 765000]", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "revenue<2000 revenue>9997000 -name=Tom9998*", 5, "name");
     queryByStringQueryParser("personIndex", "Person", "revenue=400000", 5, "name");
+//    queryByStringQueryParser("personIndex", "Person", "[123 TO 124]", 5, "__REGION_VALUE_FIELD");
+    queryByStringQueryParser("customerIndex", "Customer", "revenue:[762000 TO 765000]", 5, "name");
+    queryByStringQueryParser("customerIndex", "Customer", "contacts.revenue:[763000 TO 766000]", 5, "name");
+    queryByStringQueryParser("customerIndex", "Customer", "+contacts.revenue:[763000 TO 766000] +revenue:[762000 TO 765000]", 5, "name");
+//    queryByStringQueryParser("customerIndex", "Customer", "[123 to 124]", 5, "__REGION_VALUE_FIELD");
   }
 
   public void doQuery() throws LuceneQueryException {
@@ -535,8 +570,8 @@ public class Main {
     queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 0, "name");
     
     if (instanceType != CALCULATE_SIZE) {
-    System.out.println("\nUse customized analyzer to tokenize by '_'");
-    queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0, "name");
+      System.out.println("\nUse customized analyzer to tokenize by '_'");
+      queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0, "name");
     }
     System.out.println("\nCompare with standard analyzer");
     queryByStringQueryParser("personIndex", "Person", "address:97763", 0, "name");
@@ -552,36 +587,36 @@ public class Main {
     queryByStringQueryParser("personIndex", "Person", "address:\"999 Portland_OR_97999\"~2", 0, "name");
 
     if (instanceType != CALCULATE_SIZE) {
-    System.out.println("\nQuery with composite condition");
-    queryByStringQueryParser("analyzerIndex", "Person", "name:Tom999* OR address:97763", 0, "name");
+      System.out.println("\nQuery with composite condition");
+      queryByStringQueryParser("analyzerIndex", "Person", "name:Tom999* OR address:97763", 0, "name");
 
-    System.out.println("\nsearch region Customer for symbol 123 and 456");
-    queryByStringQueryParser("customerIndex", "Customer", "symbol:123", 0, "name");
-    queryByStringQueryParser("customerIndex", "Customer", "symbol:456", 0, "name");
-    
-    queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0, "name");
-    queryByIntRange("pageIndex", "Page", "id", 100, 102);
+      System.out.println("\nsearch region Customer for symbol 123 and 456");
+      queryByStringQueryParser("customerIndex", "Customer", "symbol:123", 0, "name");
+      queryByStringQueryParser("customerIndex", "Customer", "symbol:456", 0, "name");
 
-    System.out.println("\nExamples of QueryProvider");
-    queryByIntRange("customerIndex", "Customer", "SSN", 995, Integer.MAX_VALUE);
+      queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0, "name");
+      queryByIntRange("pageIndex", "Page", "id", 100, 102);
 
-//    System.out.println("\nExamples of ToParentBlockJoin query provider");
-//    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou11*", "email");
-//
-//    queryByGrandChildJoinQuery("customerIndex", "Customer", "symbol", "name", "title", "email:tzhou12*", "PivotalPage123*");
+      System.out.println("\nExamples of QueryProvider");
+      queryByIntRange("customerIndex", "Customer", "SSN", 995, Integer.MAX_VALUE);
 
-    // cross regions:
-    // query analyzerIndex to find a Person with address:97763, then use Person's name to find the Customer
-    HashSet persons = queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0, "name");
-    for (Object value:persons) {
-      if (value instanceof Person) {
-        Person person = (Person)value;
-        HashSet customers = queryByStringQueryParser("customerIndex", "Customer", "\""+person.getName()+"\"", 0, "name");
-        for (Object c:customers) {
-          System.out.println("Found a customer:"+c);
+      //    System.out.println("\nExamples of ToParentBlockJoin query provider");
+      //    queryByJoinQuery("customerIndex", "Customer", "symbol", "*", "email:tzhou11*", "email");
+      //
+      //    queryByGrandChildJoinQuery("customerIndex", "Customer", "symbol", "name", "title", "email:tzhou12*", "PivotalPage123*");
+
+      // cross regions:
+      // query analyzerIndex to find a Person with address:97763, then use Person's name to find the Customer
+      HashSet persons = queryByStringQueryParser("analyzerIndex", "Person", "address:97763", 0, "name");
+      for (Object value:persons) {
+        if (value instanceof Person) {
+          Person person = (Person)value;
+          HashSet customers = queryByStringQueryParser("customerIndex", "Customer", "\""+person.getName()+"\"", 0, "name");
+          for (Object c:customers) {
+            System.out.println("Found a customer:"+c);
+          }
         }
       }
-    }
     }
 
     System.out.println("Regular query on soundex analyzer: double metaphone");
@@ -741,6 +776,8 @@ public class Main {
   
   private void insertPrimitiveTypeValue(Region region) {
     region.put("primitiveInt1", 123);
+    region.put("primitiveInt1", 124);
+    region.put("primitiveInt1", 125);
     region.put("primitiveInt2", "223");
   }
 

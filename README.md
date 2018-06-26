@@ -18,6 +18,8 @@ Following gemfire lucene features are tested:
 - From a client (or native client) to run lucene query through calling a function execution
 - soundex query
 - query into nested object using FlatFormatSerializer
+- numeric query using PointsConfigMap
+- create index after region
 
 It can be run standalone, or in a cluster contains server 
 with feeder, server only, client. Both server with feeder 
@@ -61,6 +63,16 @@ There're following standalone tests:
 or
 ./gradlew run -PappArgs="[6, false, '/Users/gzhou/git3/geode311demo/bin/311-sample.csv']"
 
+7) create /Person region and feed it without creating index
+./gradlew run -PappArgs="[7, false]"
+
+8) create index and reindex
+./gradlew run -PappArgs="[8, false]"
+
+9) create index after region
+./gradlew run -PappArgs="[9, false]"
+
+----------------------
 Part-0: preparation
 
 You can use either gemfire or geode
@@ -471,8 +483,6 @@ standalone:
 
 use gfsh:
 step 1:
-cd $HOME/lucene_demo/locator
-export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 $GEMFIRE/bin/gfsh
 
 set variable --name=APP_QUIET_EXECUTION --value=true
@@ -491,7 +501,17 @@ step 3:
 gfsh> create region --name=Person --type=PARTITION_REDUNDANT_PERSISTENT
 Region /Person already exists on the cluster.
 
-gfsh> create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue,revenue_float,revenue_double,revenue_long
+gfsh> create region --name=Customer --type=PARTITION_REDUNDANT_PERSISTENT
+Region /Customer already exists on the cluster.
+
+gfsh> create region --name=Page --type=PARTITION_REDUNDANT_PERSISTENT
+Region /Page already exists on the cluster.
+
+gfsh> create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue,revenue_float,revenue_double,revenue_long,__REGION_VALUE_FIELD
+
+gfsh> create lucene index --name=customerIndex --region=/Customer --field=name,symbol,revenue,SSN,phoneNumers,myHomePages.content,contacts.name,contacts.phoneNumbers,contacts.address,contacts.revenue,contacts.homepage.title,contact.homepage.id,__REGION_VALUE_FIELD --serializer=org.apache.geode.cache.lucene.FlatFormatSerializer
+
+gfsh> create lucene index --name=pageIndex --region=/Page --field=id,title,content
 
 gfsh>search lucene --name=personIndex --region=/Person --defaultField=name --queryStrings="name:Tom999*"
 
@@ -601,4 +621,13 @@ jsondoc1 | PDX[8776019,__GEMFIRE_JSON]{address=PDX[16524384,__GEMFIRE_JSON]{city
 key400   | Person{name='Tom400 Zhou', email='tzhou400@example.com', address='400 Lindon St, Portland_OR_97400', revenue=400000, homepage='Page{id=400, title='PivotalPage400 manager', content='Hello world no 400'}', phoneNumbers='[5036331400, 5036341400]'}       | 1
 
 Note: numeric field in JSON object can also be searched.
+
+gfsh>search lucene --region=/Customer --name=customerIndex --queryString="revenue:[762000 TO 765000]" --defaultField=name
+Note: should display 4 entries 
+
+gfsh>search lucene --region=/Customer --name=customerIndex --queryString="contacts.revenue:[763000 TO 766000]" --defaultField=name
+Note: should display 4 entries 
+
+gfsh>search lucene --region=/Customer --name=customerIndex --queryString="+contacts.revenue:[763000 TO 766000] +revenue:[762000 TO 765000]" --defaultField=name
+Note: should display 3 entries
 
