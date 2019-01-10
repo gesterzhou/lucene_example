@@ -198,9 +198,7 @@ public class Main {
           
           // calculate region size
           prog.calculateSize("personIndex", "Person");
-//          prog.doDump("personIndex", "Person");
-//          prog.doQuery();
-          
+
           Process process = null;
           try {
             process = Runtime.getRuntime().exec("cp ./server1.gfs ./server1.bak"+opType);
@@ -275,23 +273,11 @@ public class Main {
           prog.waitUntilFlushed("customerIndex", "Customer");
 
           prog.doASimpleQuery();
-          prog.doNumericQueryWithPointsConfigMap();
-          
-          break;
-        case FEED_DATA_THEN_NUMERIC_QUERY:
-          // create cache, create index, create region
-          // do feed
-          // do query
-          // create cache, create region, do feed
-          prog.createCache(serverPort);
-          prog.PersonRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Person");
-          prog.CustomerRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Customer");
-          prog.PageRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Page");
-          prog.feed(ENTRY_COUNT);
 
           System.out.println("Press any key to execute numeric query");
           int c = System.in.read();
           prog.doNumericQueryWithPointsConfigMap();
+          
           break;
       }
       
@@ -468,7 +454,8 @@ public class Main {
       System.out.println("Region "+regionName+" is empty");
       return;
     }
-    
+
+    System.out.println("Reindex starts");
     PartitionedRepositoryManager repositoryManager = (PartitionedRepositoryManager)index.getRepositoryManager();
     HashSet<IndexRepository> repositories = new HashSet();
     Iterator it = pr.entrySet().iterator();
@@ -576,8 +563,9 @@ public class Main {
     System.out.println("\nCompare with standard analyzer");
     queryByStringQueryParser("personIndex", "Person", "address:97763", 0, "name");
 
-    System.out.println("\nFuzzy search examples:~0.8 should find more accurate matchs than ~0.5");
-    queryByStringQueryParser("personIndex", "Person", "name:Tom999*", 0, "name");
+    queryByStringQueryParser("personIndex", "Person", "name:Tom999*", 10, "name");
+
+    System.out.println("\nFuzzy search examples:~0.8 should find more accurate matchs than default ~0.5");
     queryByStringQueryParser("personIndex", "Person", "name:Tom999~", 0, "name");
     queryByStringQueryParser("personIndex", "Person", "name:Tom999~0.8", 0, "name");
 
@@ -856,7 +844,7 @@ public class Main {
 
     PageableLuceneQueryResults<Object, Object> results = query.findPages();
     if (results.size() >0 ) {
-      System.out.println("Search found "+results.size()+" pages in "+regionName);
+      System.out.println("Search found "+results.size()+" results in "+regionName+", page size is "+query.getPageSize());
     }
 
     HashSet values = new HashSet<>();
@@ -865,7 +853,7 @@ public class Main {
     final AtomicInteger cnt = new AtomicInteger(0);
     while(results.hasNext()) {
       if (query.getPageSize() != 0) {
-//        System.out.println("Page:"+pageno+" starts here ------------");
+        System.out.println("Page:"+pageno+" starts here ------------");
       }
       results.next().stream()
       .forEach(struct -> {
@@ -883,7 +871,7 @@ public class Main {
         cnt.incrementAndGet();
       });
       if (query.getPageSize() != 0) {
-//        System.out.println("Page:"+pageno+" ends here, press any key to show next page ------------");
+        System.out.println("Page:"+pageno+" ends here, press any key to show next page ------------");
         try {
           int c = System.in.read();
         }
