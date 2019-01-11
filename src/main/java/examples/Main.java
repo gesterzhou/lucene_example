@@ -279,6 +279,21 @@ public class Main {
           prog.doNumericQueryWithPointsConfigMap();
           
           break;
+        case FEED_DATA_THEN_NUMERIC_QUERY:
+          // create cache, create index, create region
+          // do feed
+          // do query
+          // create cache, create region, do feed
+          prog.createCache(serverPort);
+          prog.PersonRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Person");
+          prog.CustomerRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Customer");
+          prog.PageRegion = prog.createRegion(RegionShortcut.PARTITION_REDUNDANT_PERSISTENT, "Page");
+          prog.feed(ENTRY_COUNT);
+
+          System.out.println("Press any key to execute numeric query");
+          int c1 = System.in.read();
+          prog.doNumericQueryWithPointsConfigMap();
+          break;
       }
       
       System.out.println("Press any key to exit");
