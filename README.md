@@ -145,11 +145,12 @@ gfsh>start locator --name=locator1 --port=12345
 Step 2: start cache server
 --------------------------
 gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost
+gfsh>deploy --jar=/Users/gzhou/lucene_demo/server/lucene_example/build/libs/lucene_example-0.0.1.jar
 
 Step 3: create lucene index from scratch
 ----------------------------------------
 gfsh>help create lucene index
-gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD
+gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD,name
                  Member                  | Status
 ---------------------------------------- | ---------------------------------
 192.168.1.23(server50505:17200)<v1>:1025 | Successfully created lucene index
@@ -204,6 +205,39 @@ key | value  | score
 3   | value3 | 1
 2   | value2 | 1
 1   | value1 | 1
+
+gfsh>put --region=/testRegion --key=10  --value="{'name':'tzhou10','email':'tzhou10@example.com','address':'address10'}" --value-class="examples.Person"
+Result      : true
+Key Class   : java.lang.String
+Key         : 10
+Value Class : examples.Person
+Old Value   : null
+
+gfsh>put --region=/testRegion --key=11  --value="{'name':'tzhou11','email':'tzhou11@example.com','address':'address11'}" --value-class="examples.Person"
+Result      : true
+Key Class   : java.lang.String
+Key         : 11
+Value Class : examples.Person
+Old Value   : null
+
+gfsh>put --region=/testRegion --key=12  --value="{'name':'tzhou12','email':'tzhou12@example.com','address':'address12'}" --value-class="examples.Person"
+Result      : true
+Key Class   : java.lang.String
+Key         : 12
+Value Class : examples.Person
+Old Value   : null
+
+gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=tzhou11 --defaultField=name
+key |                                                      value                                                      | score
+--- | --------------------------------------------------------------------------------------------------------------- | ---------
+11  | Person{name='tzhou11', email='tzhou11@example.com', address='address11', revenue=0, homepage='null', phoneNum.. | 0.2876821
+
+gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=tzhou1* --defaultField=name
+key |                                                        value                                                        | score
+--- | ------------------------------------------------------------------------------------------------------------------- | -----
+10  | Person{name='tzhou10', email='tzhou10@example.com', address='address10', revenue=0, homepage='null', phoneNumbers.. | 1
+11  | Person{name='tzhou11', email='tzhou11@example.com', address='address11', revenue=0, homepage='null', phoneNumbers.. | 1
+12  | Person{name='tzhou12', email='tzhou12@example.com', address='address12', revenue=0, homepage='null', phoneNumbers.. | 1
 
 Step 5: view the region in REST 
 -------------------------------
