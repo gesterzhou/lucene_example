@@ -33,7 +33,7 @@ import org.apache.geode.internal.cache.PartitionedRegion;
 import org.apache.geode.internal.cache.PartitionedRegionStats;
 import org.apache.geode.internal.cache.PRHARedundancyProvider;
 
-import org.apache.geode.internal.cache.partitioned.RedundancyLogger;
+import org.apache.geode.internal.cache.partitioned.PersistentBucketRecoverer;
 import org.apache.geode.internal.cache.partitioned.RegionAdvisor;
 
 import org.apache.geode.internal.cache.persistence.PersistentMemberManager;
@@ -101,7 +101,7 @@ public class GatewaySenderObjectFilter implements ObjectFilter {
         || object instanceof AccessControlContext
         || object instanceof ThreadGroup
         || object instanceof PartitionListener
-        || object instanceof RedundancyLogger
+        || object instanceof PersistentBucketRecoverer
         //|| object instanceof RegionAdvisor
         //|| object instanceof BucketAdvisor
 				) {

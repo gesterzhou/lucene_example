@@ -76,43 +76,14 @@ or
 Part-0: preparation
 
 You can use either gemfire or geode
-If you are using gemfire 9.0.4:
-- download gemfire 9.0.4 from https://network.pivotal.io/products/pivotal-gemfire
+If you are using gemfire:
+- download gemfire from https://network.pivotal.io/products/pivotal-gemfire
 - Unzip it to $HOME/pivotal-gemfire-9.0.4
 
-If you are using geode 1.2:
+If you are using geode:
 git clone https://git-wip-us.apache.org/repos/asf/geode.git
 cd geode
-./gradlew build -Dskip.tests=true install
-
-Note:
-Since the demo used nested object, you have to apply following patch into geode:
-diff --git a/geode-assembly/build.gradle b/geode-assembly/build.gradle
-index a4f0c69ee..6ab9396f3 100755
---- a/geode-assembly/build.gradle
-+++ b/geode-assembly/build.gradle
-@@ -176,6 +176,8 @@ def cp = {
-         it.contains('lucene-analyzers-common') ||
-         it.contains('lucene-core') ||
-         it.contains('lucene-queries') ||
-+        it.contains('lucene-join') ||
-+        it.contains('lucene-grouping') ||
-         it.contains('lucene-queryparser')
-       }
-     }
-diff --git a/geode-lucene/build.gradle b/geode-lucene/build.gradle
-index 74de7a6a8..360ab55fb 100644
---- a/geode-lucene/build.gradle
-+++ b/geode-lucene/build.gradle
-@@ -22,6 +22,8 @@ dependencies {
-     compile 'org.apache.lucene:lucene-analyzers-common:' + project.'lucene.version'
-     compile 'org.apache.lucene:lucene-core:' + project.'lucene.version'
-     compile 'org.apache.lucene:lucene-queries:' + project.'lucene.version'
-+    compile 'org.apache.lucene:lucene-join:' + project.'lucene.version'
-+    compile 'org.apache.lucene:lucene-grouping:' + project.'lucene.version'
-     compile ('org.apache.lucene:lucene-queryparser:' + project.'lucene.version') {
-       exclude module: 'lucene-sandbox'
-     }
+./gradlew build -Dskip.tests=true publishToMavenLocal
 
 You might need 3 copies to run following members:
 
@@ -140,6 +111,7 @@ cd $HOME/lucene_demo/locator
 export GEMFIRE=$HOME/pivotal-gemfire-9.0.4
 $GEMFIRE/bin/gfsh
 
+gfsh>set variable --name=APP_QUIET_EXECUTION --value=true
 gfsh>start locator --name=locator1 --port=12345
 
 Step 2: start cache server
@@ -262,7 +234,56 @@ key | value  | score
 2   | value2 | 1
 1   | value1 | 1
 
-Step 8: clean up
+gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=tzhou1* --defaultField=name
+key |                                                        value                                                        | score
+--- | ------------------------------------------------------------------------------------------------------------------- | -----
+10  | Person{name='tzhou10', email='tzhou10@example.com', address='address10', revenue=0, homepage='null', phoneNumbers.. | 1
+11  | Person{name='tzhou11', email='tzhou11@example.com', address='address11', revenue=0, homepage='null', phoneNumbers.. | 1
+12  | Person{name='tzhou12', email='tzhou12@example.com', address='address12', revenue=0, homepage='null', phoneNumbers.. | 1
+
+gfsh>destroy lucene index --region=/testRegion --name=testIndex
+                 Member                   | Status
+----------------------------------------- | ---------------------------------------------------------------------
+10.118.19.15(server50505:16120)<v3>:41001 | Successfully destroyed lucene index testIndex from region /testRegion
+
+gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=tzhou1* --defaultField=name
+Index testIndex not found on region /testRegion
+
+gfsh>query --query="select * from /testRegion"
+Result : true
+Limit  : 100
+Rows   : 6
+
+Step 8: Now, try to create index after region
+---------------------------------------------
+gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD,name
+                 Member                   | Status
+----------------------------------------- | ------------------------------------------------------
+10.118.19.15(server50505:19960)<v9>:41001 | Failed: The lucene index must be created before region
+
+gfsh>shutdown
+
+gfsh>connect --locator=localhost[12345]
+gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345] --start-rest-api --http-service-port=8080 --http-service-bind-address=localhost --J=-Dgemfire.luceneReindex=true
+
+gfsh>query --query="select * from /testRegion"
+Result : true
+Limit  : 100
+Rows   : 6
+
+gfsh>create lucene index --name=testIndex --region=testRegion --field=__REGION_VALUE_FIELD,name
+                  Member                   | Status
+------------------------------------------ | ---------------------------------
+10.118.19.15(server50505:22318)<v11>:41001 | Successfully created lucene index
+
+gfsh>search lucene --name=testIndex --region=/testRegion --queryStrings=tzhou1* --defaultField=name
+key |                                                           value                                                           | score
+--- | ------------------------------------------------------------------------------------------------------------------------- | -----
+11  | Person{name='tzhou11', email='tzhou11@example.com', address='address11', revenue=0, homepage='null', phoneNumbers='null'} | 1.0
+12  | Person{name='tzhou12', email='tzhou12@example.com', address='address12', revenue=0, homepage='null', phoneNumbers='null'} | 1.0
+10  | Person{name='tzhou10', email='tzhou10@example.com', address='address10', revenue=0, homepage='null', phoneNumbers='null'} | 1.0
+
+Step 9: clean up
 ----------------
 gfsh>shutdown --include-locators=true
 gfsh>exit
