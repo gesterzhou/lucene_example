@@ -175,6 +175,10 @@ public class Main {
           prog.waitUntilFlushed("pageIndex", "Page");
           
           prog.doQuery();
+          prog.doDump("PersonIndex", "Person");
+          prog.doDump("analyzerIndex", "Person");
+          prog.doDump("customerIndex", "Customer");
+          prog.doDump("pageIndex", "Page");
           break;
       
         case SERVER_ONLY:
