@@ -31,15 +31,15 @@ repositories {
     // pivotalPassword=yyyy
     mavenLocal()
     jcenter()
-    maven {
-      url 'https://commercial-repo.pivotal.io/data3/gemfire-release-repo/gemfire'
-      credentials {
-                username "$gemfireReleaseRepoUser"
-                password "$gemfireReleaseRepoPassword"
+    // maven {
+      // url 'https://commercial-repo.pivotal.io/data3/gemfire-release-repo/gemfire'
+      // credentials {
+                // username "$gemfireReleaseRepoUser"
+                // password "$gemfireReleaseRepoPassword"
         // username "$pivotalUsername"
         // password "$pivotalPassword"
-      }
-    }
+      // }
+    // }
 
     // maven { url "https://repository.apache.org/content/repositories/snapshots" }
 }
@@ -55,9 +55,9 @@ dependencies {
     // compile "io.pivotal.gemfire:geode-lucene:9.2.0"
 
     // If using develop version (geode 1.10.0)
-    compile "org.apache.geode:geode-core:1.11.0-SNAPSHOT"
-    compile "org.apache.geode:geode-serialization:1.11.0-SNAPSHOT"
-    compile "org.apache.geode:geode-lucene:1.11.0-SNAPSHOT"
+    compile "org.apache.geode:geode-core:1.12.0-SNAPSHOT"
+    compile "org.apache.geode:geode-serialization:1.12.0-SNAPSHOT"
+    compile "org.apache.geode:geode-lucene:1.12.0-SNAPSHOT"
 
     // third party 
     compile "org.springframework.shell:spring-shell:1.2.0.RELEASE"

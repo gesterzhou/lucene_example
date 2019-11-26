@@ -6,14 +6,14 @@ import java.util.Collection;
 import java.util.Collections;
 
 public class Customer implements Serializable {
-  private String name;
-  private String symbol; // search integer in string format
-  private int revenue;
-  private int SSN; // search int
-  private Collection<String> phoneNumbers;
+  protected String name;
+  protected String symbol; // search integer in string format
+  protected int revenue;
+  protected int SSN; // search int
+  protected Collection<String> phoneNumbers;
 //  private Person contact;
-  private Collection<Person> contacts;
-  private Page[] myHomePages;
+  protected Collection<Person> contacts;
+  protected Page[] myHomePages;
 
   public Customer() {}
 
@@ -25,7 +25,7 @@ public class Customer implements Serializable {
     this.name = Person.createName(idx);
     this.symbol = ""+idx;
     this.revenue = 1000 * idx;
-    this.SSN = idx;    
+    this.SSN = idx;
     this.phoneNumbers = new ArrayList<String>();
     this.phoneNumbers.add("503533"+(1000+idx));
     this.phoneNumbers.add("503534"+(1000+idx));

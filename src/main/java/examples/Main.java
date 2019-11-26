@@ -3,33 +3,23 @@ package examples;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
+import org.apache.geode.logging.internal.log4j.api.LogService;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
-import org.apache.lucene.analysis.core.LowerCaseFilter;
-import org.apache.lucene.analysis.util.CharTokenizer;
-import org.apache.lucene.queryparser.classic.ParseException;
-import static org.apache.geode.distributed.ConfigurationProperties.OFF_HEAP_MEMORY_SIZE;
 
 import loader.Loader;
 import objectsize.ObjectSizer;
 
 import org.apache.geode.cache.Cache;
 import org.apache.geode.cache.CacheFactory;
-import org.apache.geode.cache.DataPolicy;
 import org.apache.geode.cache.EvictionAction;
 import org.apache.geode.cache.EvictionAttributes;
 import org.apache.geode.cache.GemFireCache;
@@ -48,10 +38,8 @@ import org.apache.geode.cache.execute.Function;
 import org.apache.geode.cache.execute.FunctionService;
 import org.apache.geode.cache.execute.ResultCollector;
 import org.apache.geode.cache.lucene.FlatFormatSerializer;
-import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.cache.lucene.LuceneQuery;
 import org.apache.geode.cache.lucene.LuceneQueryException;
-import org.apache.geode.cache.lucene.LuceneResultStruct;
 import org.apache.geode.cache.lucene.LuceneService;
 import org.apache.geode.cache.lucene.LuceneServiceProvider;
 import org.apache.geode.cache.lucene.PageableLuceneQueryResults;
@@ -61,18 +49,13 @@ import org.apache.geode.cache.lucene.internal.LuceneIndexImpl;
 import org.apache.geode.cache.lucene.internal.LuceneServiceImpl;
 import org.apache.geode.cache.lucene.internal.PartitionedRepositoryManager;
 import org.apache.geode.cache.lucene.internal.repository.IndexRepository;
-import org.apache.geode.cache.lucene.internal.repository.RepositoryManager;
 import org.apache.geode.distributed.ServerLauncher;
 import org.apache.geode.distributed.ServerLauncher.Builder;
-import org.apache.geode.internal.DSFIDFactory;
 import org.apache.geode.internal.ProcessOutputReader;
 import org.apache.geode.internal.cache.BucketNotFoundException;
 import org.apache.geode.internal.cache.EntrySnapshot;
 import org.apache.geode.internal.cache.EvictionAttributesImpl;
-import org.apache.geode.internal.cache.LocalRegion;
 import org.apache.geode.internal.cache.PartitionedRegion;
-import org.apache.geode.internal.cache.RegionEntry;
-import org.apache.geode.internal.logging.LogService;
 import org.apache.geode.pdx.JSONFormatter;
 import org.apache.geode.pdx.PdxInstance;
 
@@ -81,6 +64,7 @@ public class Main {
   GemFireCache cache;
   Region PersonRegion;
   Region CustomerRegion;
+  Region LocalCustomerRegion;
   Region PageRegion;
   LuceneServiceImpl service;
   static int serverPort = 50505;
@@ -172,12 +156,14 @@ public class Main {
           prog.waitUntilFlushed("personIndex", "Person");
           prog.waitUntilFlushed("analyzerIndex", "Person");
           prog.waitUntilFlushed("customerIndex", "Customer");
+          prog.waitUntilFlushed("childCustomerIndex", "LocalCustomer");
           prog.waitUntilFlushed("pageIndex", "Page");
           
           prog.doQuery();
-          prog.doDump("PersonIndex", "Person");
+          prog.doDump("personIndex", "Person");
           prog.doDump("analyzerIndex", "Person");
           prog.doDump("customerIndex", "Customer");
+          prog.doDump("childCustomerIndex", "LocalCustomer");
           prog.doDump("pageIndex", "Page");
           break;
       
@@ -398,6 +384,9 @@ public class Main {
       createCustomerIndex();
       CustomerRegion = createRegion(shortcut, "Customer");
 
+      createLocalCustomerIndex();
+      LocalCustomerRegion = createRegion(shortcut, "LocalCustomer");
+
       // create an index using standard analyzer on region /Page
       createPageIndex();
       PageRegion = createRegion(shortcut, "Page");      
@@ -436,6 +425,16 @@ public class Main {
     .addField("contacts.email", new KeywordAnalyzer())
     .setLuceneSerializer(new FlatFormatSerializer())
     .create("customerIndex", "Customer", true);
+  }
+
+  private void createLocalCustomerIndex() {
+    LuceneIndexFactoryImpl factory = (LuceneIndexFactoryImpl)service.createIndexFactory();
+    factory.setFields(customerIndexFields)
+            .addField("contacts.email", new KeywordAnalyzer())
+            .addField("childName")
+            .addField("childPhoneNumbers")
+            .setLuceneSerializer(new FlatFormatSerializer())
+            .create("childCustomerIndex", "LocalCustomer", true);
   }
   
   private void createPageIndex() {
@@ -572,6 +571,7 @@ public class Main {
   }
 
   public void doQuery() throws LuceneQueryException {
+    /*
     System.out.println("Regular query on standard analyzer:");
     queryByStringQueryParser("personIndex", "Person", "name:Tom99*", 0, "name");
     
@@ -641,6 +641,7 @@ public class Main {
 
     queryByStringQueryParser("customerIndex", "Customer", "symbol:99*", 0, "symbol");
     queryByIntRange("pageIndex", "Page", "id", 100, 102);
+     */
 
     // Query nested object using FlatFormatSerializer   
     System.out.println("Query using FlatFormatSerializer------------");
@@ -652,6 +653,20 @@ public class Main {
     queryByStringQueryParser("customerIndex", "Customer", "Tom323", 5, "contacts.name");
     queryByStringQueryParser("customerIndex", "Customer", "tzhou323@example.com", 5, "contacts.email");
     queryByStringQueryParser("customerIndex", "Customer", "manager", 5, "contacts.homepage.title");
+
+    queryByStringQueryParser("childCustomerIndex", "LocalCustomer", "5036331123 OR 5036341456", 0, "contacts" +
+            ".phoneNumbers");
+    queryByStringQueryParser("childCustomerIndex", "LocalCustomer", "5036331123 AND 5036341456", 0, "contacts" +
+            ".phoneNumbers");
+
+    queryByStringQueryParser("childCustomerIndex", "LocalCustomer", "323 OR 320", 5, "myHomePages.content");
+    queryByStringQueryParser("childCustomerIndex", "LocalCustomer", "Tom323", 5, "contacts.name");
+    queryByStringQueryParser("childCustomerIndex", "LocalCustomer", "tzhou323@example.com", 5, "contacts.email");
+    queryByStringQueryParser("childCustomerIndex", "LocalCustomer", "manager", 5, "contacts.homepage.title");
+
+    queryByStringQueryParser("childCustomerIndex", "LocalCustomer", "childTom124*", 0, "childName");
+    queryByStringQueryParser("childCustomerIndex", "LocalCustomer", "7035341123", 0, "childPhoneNumbers");
+
   }
   
   public void doClientFunction() {
@@ -761,6 +776,7 @@ public class Main {
     if (instanceType != CALCULATE_SIZE) {
       for (int i=0; i<count; i++) {
         CustomerRegion.put("key"+i, new Customer(i));
+        LocalCustomerRegion.put("key"+i, new LocalCustomer(i));
       }
       for (int i=0; i<count; i++) {
         PageRegion.put("key"+i, new Page(i));
