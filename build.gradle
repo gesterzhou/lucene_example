@@ -31,15 +31,15 @@ repositories {
     // pivotalPassword=yyyy
     mavenLocal()
     jcenter()
-    // maven {
-      // url 'https://commercial-repo.pivotal.io/data3/gemfire-release-repo/gemfire'
-      // credentials {
-                // username "$gemfireReleaseRepoUser"
-                // password "$gemfireReleaseRepoPassword"
+    maven {
+      url 'https://commercial-repo.pivotal.io/data3/gemfire-release-repo/gemfire'
+      credentials {
+                username "$gemfireReleaseRepoUser"
+                password "$gemfireReleaseRepoPassword"
         // username "$pivotalUsername"
         // password "$pivotalPassword"
-      // }
-    // }
+      }
+    }
 
     // maven { url "https://repository.apache.org/content/repositories/snapshots" }
 }
