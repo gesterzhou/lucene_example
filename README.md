@@ -314,10 +314,12 @@ server50505 | lucene_example-0.0.1.jar | /Users/gzhou/lucene_demo/locator/server
 create lucene index --name=analyzerIndex --region=/Person --field=name,email,address,revenue --analyzer=DEFAULT,org.apache.lucene.analysis.core.KeywordAnalyzer,examples.MyCharacterAnalyzer,DEFAULT 
 create lucene index --name=personIndex --region=/Person --field=name,email,address,revenue
 create lucene index --name=customerIndex --region=/Customer --field=contacts.email,myHomePages.content,contacts.name,contacts.phoneNumbers,contacts.homepage.title,name,phoneNumers --analyzer=org.apache.lucene.analysis.core.KeywordAnalyzer,DEFAULT,DEFAULT,DEFAULT,DEFAULT,DEFAULT,DEFAULT --serializer=org.apache.geode.cache.lucene.FlatFormatSerializer
+create lucene index --name=childCustomerIndex --region=/LocalCustomer --field=contacts.email,childName,childPhoneNumbers --analyzer=org.apache.lucene.analysis.core.KeywordAnalyzer,DEFAULT,DEFAULT --serializer=org.apache.geode.cache.lucene.FlatFormatSerializer
 create lucene index --name=pageIndex --region=/Page --field=id,title,content
 create region --name=Person --type=PARTITION_REDUNDANT_PERSISTENT
 create region --name=Customer --type=PARTITION_REDUNDANT_PERSISTENT
 create region --name=Page --type=PARTITION_REDUNDANT_PERSISTENT
+create region --name=LocalCustomer --type=PARTITION_REDUNDANT_PERSISTENT
 
 gfsh>list lucene indexes
  Index Name   | Region Path |                           Indexed Fields                           | Field Analy.. | Status

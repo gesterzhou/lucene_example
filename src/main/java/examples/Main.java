@@ -58,6 +58,7 @@ import org.apache.geode.internal.cache.EvictionAttributesImpl;
 import org.apache.geode.internal.cache.PartitionedRegion;
 import org.apache.geode.pdx.JSONFormatter;
 import org.apache.geode.pdx.PdxInstance;
+import org.apache.lucene.document.IntPoint;
 
 public class Main {
   ServerLauncher serverLauncher;
@@ -125,6 +126,8 @@ public class Main {
           // create client cache and proxy regions
           // do query
           prog.createClientCache();
+          prog.queryByIntRange("pageIndex", "Page", "id", 100, 102);
+
           prog.doQuery();
           prog.doClientFunction();
           break;
@@ -302,6 +305,7 @@ public class Main {
     PersonRegion = crf.create("Person");
     CustomerRegion = crf.create("Customer");
     PageRegion = crf.create("Page");
+    LocalCustomerRegion = crf.create("LocalCustomer");
     
     service = (LuceneServiceImpl) LuceneServiceProvider.get(cache);
 //    service.LUCENE_REINDEX = true;
@@ -403,6 +407,7 @@ public class Main {
     PersonRegion = cache.getRegion("Person");
     CustomerRegion = cache.getRegion("Customer");
     PageRegion = cache.getRegion("Page");
+    LocalCustomerRegion = cache.getRegion("LocalCustomer");
   }  
 
   private void createPersonIndex() {
@@ -941,6 +946,10 @@ public class Main {
     long then = System.currentTimeMillis();
     IntRangeQueryProvider provider = new IntRangeQueryProvider(fieldName, lowerValue, upperValue);
     LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, provider);
+//    LuceneQuery query = service.createLuceneQueryFactory().create(indexName, regionName, index -> {
+//      System.out.println("GGG:Where am I?");
+//        return IntPoint.newRangeQuery(fieldName, lowerValue, upperValue);
+//    });
 
     HashSet results = getResults(query, regionName);
     System.out.println("Query took "+(System.currentTimeMillis() - then));
