@@ -3,6 +3,7 @@ package examples;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -10,6 +11,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.geode.cache.lucene.LuceneIndex;
 import org.apache.geode.logging.internal.log4j.api.LogService;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
@@ -59,6 +61,11 @@ import org.apache.geode.internal.cache.PartitionedRegion;
 import org.apache.geode.pdx.JSONFormatter;
 import org.apache.geode.pdx.PdxInstance;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
+import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.Query;
 
 public class Main {
   ServerLauncher serverLauncher;
@@ -145,7 +152,7 @@ public class Main {
           prog.waitUntilFlushed("customerIndex", "Customer");
           prog.waitUntilFlushed("pageIndex", "Page");
 
-          prog.doQuery();
+          prog.doQueryOnPage();
           break;
 
         case SERVER_WITH_FEEDER:
@@ -575,6 +582,116 @@ public class Main {
 //    queryByStringQueryParser("customerIndex", "Customer", "[123 to 124]", 5, "__REGION_VALUE_FIELD");
   }
 
+  public void doQueryOnPage() {
+    try {
+      LuceneQuery<String, Page> luceneQuery = service.createLuceneQueryFactory().setLimit(50)
+              .create("pageIndex", "Page", "PivotalPageManager99*", "title");
+
+      Collection<Page> allManagersPages = luceneQuery.findValues();
+      System.out.println("All managers' pages =>\n" + allManagersPages);
+    } catch (Exception e) {
+      System.out.println("Case 1 Exception:");
+      System.out.println(e.getMessage());
+    }
+
+    try {
+      IntRangeQueryProvider provider = new IntRangeQueryProvider("id", 9960, 9980);
+      LuceneQuery luceneQuery = service.createLuceneQueryFactory().create("pageIndex", "Page", provider);
+      Collection<Page> allPages = luceneQuery.findValues();
+      System.out.println("\nAll pages for id 9960-9980 using predefined QueryProvider =>\n" + allPages);
+    } catch (Exception e) {
+      System.out.println("Case 2 Exception:");
+      System.out.println(e.getMessage());
+    }
+
+    try {
+      LuceneQuery<String, Page> luceneQuery = service.createLuceneQueryFactory().setLimit(10)
+              .create("pageIndex", "Page", (LuceneIndex index) -> {
+
+                LuceneIndexImpl indexImpl = (LuceneIndexImpl) index;
+                StandardQueryParser parser = new StandardQueryParser(((LuceneIndexImpl) index).getAnalyzer());
+                parser.setAllowLeadingWildcard(true);
+                try {
+                  return parser.parse("PivotalPageManager99*", "title");
+                } catch (QueryNodeException e) {
+                }
+                return null;
+              });
+
+      Collection<Page> allManagersPages = luceneQuery.findValues();
+      System.out.println("\nAll managers' pages using lambda provider on title =>\n" + allManagersPages);
+    } catch (Exception e) {
+      System.out.println("Case 3 Exception:");
+      e.printStackTrace();
+    }
+
+    try {
+      LuceneQuery<String, Page> luceneQuery = service.createLuceneQueryFactory().setLimit(10)
+              .create("pageIndex", "Page", index -> {
+                return IntPoint.newRangeQuery("id", 9960, 9980);
+              });
+
+      Collection<Page> allManagersPages = luceneQuery.findValues();
+      System.out.println("\nAll managers' pages using lambda provider on id =>\n" + allManagersPages);
+    } catch (Exception e) {
+      System.out.println("Case 4 Exception:");
+      System.out.println(e.getMessage());
+    }
+
+    try {
+      LuceneQuery<String, Customer> luceneQuery =
+              service.createLuceneQueryFactory().setLimit(10)
+                      .create("pageIndex", "Page",
+                              index -> {
+                                Query standardStringQuery = null;
+                                try {
+                                  StandardQueryParser parser = new StandardQueryParser();
+//                                  parser.setAllowLeadingWildcard(true);
+                                  standardStringQuery = parser.parse("PivotalPageManager99*", "title");
+                                } catch (QueryNodeException e) {
+                                }
+                                return new BooleanQuery.Builder()
+                                        .add(standardStringQuery, BooleanClause.Occur.MUST)
+                                        .add(IntPoint.newRangeQuery("id", 9960, 9980), BooleanClause.Occur.MUST)
+                                        .build();
+                              });
+      Collection<Customer> allManagersPages = luceneQuery.findValues();
+      System.out.println("\nAll managers' pages using combined provider =>\n" + allManagersPages);
+    } catch (Exception e) {
+      System.out.println("Case 5 Exception:");
+      System.out.println(e.getMessage());
+    }
+
+    try {
+      StandardQueryParser parser = new StandardQueryParser();
+      Query standardStringQuery = parser.parse("PivotalPageManager99*", "title");
+
+      LuceneQuery<String, Customer> luceneQuery =
+              service.createLuceneQueryFactory().setLimit(10)
+                      .create("pageIndex", "Page",
+                              index -> {
+                                return new BooleanQuery.Builder()
+                                        .add(standardStringQuery, BooleanClause.Occur.MUST)
+                                        .add(IntPoint.newRangeQuery("id", 9970, 9990), BooleanClause.Occur.MUST)
+                                        .build();
+                              });
+      Collection<Customer> allManagersPages = luceneQuery.findValues();
+      System.out.println("\nAll managers' pages when parser in moved out of lambda =>\n" + allManagersPages);
+    } catch (Exception e) {
+      System.out.println("Case 6 Exception:");
+      System.out.println(e.getMessage());
+    }
+
+    try {
+      CombinedQueryProvider provider = new CombinedQueryProvider("id", 9960, 9980);
+      LuceneQuery luceneQuery = service.createLuceneQueryFactory().create("pageIndex", "Page", provider);
+      Collection<Page> allPages = luceneQuery.findValues();
+      System.out.println("\nAll pages for id 9960-9980 using predefined CombinedQueryProvider =>\n" + allPages);
+    } catch (Exception e) {
+      System.out.println("Case 7 Exception:");
+      System.out.println(e.getMessage());
+    }
+  }
   public void doQuery() throws LuceneQueryException {
     /*
     System.out.println("Regular query on standard analyzer:");

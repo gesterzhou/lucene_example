@@ -23,12 +23,13 @@ public class Page implements Serializable {
 
   public Page(int idx) {
     this.id = idx;
-    this.title = "PivotalPage"+idx;
+    this.title = "PivotalPage";
     if (id % 10 == 0) {
-      this.title += " manager";
+      this.title += "Manager";
     } else {
-      this.title += " developer";
+      this.title += "Developer";
     }
+    this.title += idx;
     this.content = "Hello world no " + id;
   }
 
