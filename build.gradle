@@ -13,6 +13,7 @@ apply plugin: 'eclipse'
 apply plugin: 'application'
 
 mainClassName = "examples.Main"
+// mainClassName = "examples.JSONTest"
 
 run {
   if ( project.hasProperty("appArgs") ) {
