@@ -56,9 +56,9 @@ dependencies {
     // compile "io.pivotal.gemfire:geode-lucene:9.2.0"
 
     // If using develop version (geode 1.10.0)
-    compile "org.apache.geode:geode-core:1.14.0-build.0"
-    compile "org.apache.geode:geode-serialization:1.14.0-build.0"
-    compile "org.apache.geode:geode-lucene:1.14.0-build.0"
+    compile "org.apache.geode:geode-core:1.15.0-build.0"
+    compile "org.apache.geode:geode-serialization:1.15.0-build.0"
+    compile "org.apache.geode:geode-lucene:1.15.0-build.0"
 
     // third party 
     compile "org.apache.logging.log4j:log4j-core:2.12.1"

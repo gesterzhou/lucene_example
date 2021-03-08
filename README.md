@@ -688,3 +688,89 @@ Note: should display 4 entries
 gfsh>search lucene --region=/Customer --name=customerIndex --queryString="+contacts.revenue:[763000 TO 766000] +revenue:[762000 TO 765000]" --defaultField=name
 Note: should display 3 entries
 
+-------
+Complex user object
+Create following classes:
+package examples;
+
+import java.io.Serializable;
+
+public class ExampleRegion implements Serializable {
+  private ExampleIdentifier exampleIdentifier;
+  public ExampleRegion() {}
+  public ExampleRegion(ExampleIdentifier exampleIdentifier) {
+    this.exampleIdentifier = exampleIdentifier;
+  }
+  public void setExampleIdentifier(ExampleIdentifier exampleIdentifier) {
+    this.exampleIdentifier = exampleIdentifier;
+  }
+  public ExampleIdentifier getExampleIdentifier() {
+    return this.exampleIdentifier;
+  }
+}
+
+package examples;
+
+import java.io.Serializable;
+
+public class ExampleIdentifier implements Serializable {
+  private String exampleId;
+  private SystemId[] systemIds;
+  public ExampleIdentifier() {}
+  public ExampleIdentifier(String exampleId, SystemId[] systemIds) {
+    this.exampleId = exampleId;
+    this.systemIds = systemIds;
+  }
+  public void setExampleId(String exampleId) {
+    this.exampleId = exampleId;
+  }
+  public void setSystemIds(SystemId[] systemIds) {
+    this.systemIds = systemIds;
+  }
+  public String getExampleId() {
+    return this.exampleId;
+  }
+  public SystemId[] getSystemIds() {
+    return this.systemIds;
+  }
+}
+
+package examples;
+
+import java.io.Serializable;
+
+public class SystemId implements Serializable {
+  private String id;
+  private String system;
+  public SystemId() {}
+  SystemId(String id, String system) {
+    this.id = id;
+    this.system = system;
+  }
+  public void setId(String id) {
+    this.id = id;
+  }
+  public void setSystem(String system) {
+    this.system = system;
+  }
+  public String getId() {
+    return this.id;
+  }
+  public String getSystem() {
+    return this.system;
+  }
+}
+
+gfsh>start locator --name=locator1 --port=12345
+gfsh>start server --name=server50505 --server-port=50505 --locators=localhost[12345]
+gfsh>deploy --jar=/Users/gzhou/git3/lucene_example/build/libs/lucene_example-0.0.1.jar
+gfsh>create lucene index --name=arrayIndex --region=/exampleRegion --field=exampleIdentifier.systemIds.system --analyzer=DEFAULT --serializer=org.apache.geode.cache.lucene.FlatFormatSerializer
+gfsh>create region --name=exampleRegion --type=PARTITION
+gfsh>put --region=/exampleRegion --key="('id':'1')" --value="('exampleIdentifier': {'exampleId': '000000000','systemIds':[{'id': 'ID','system': 'MUREX'}]})" --value-class="examples.ExampleRegion"
+gfsh>put --region=/exampleRegion --key="('id':'1')" --value="('exampleIdentifier': {'exampleId': '000000000','systemIds':[{'id': 'Id','system': 'MUREX'}]})" --value-class="examples.ExampleRegion"
+gfsh>put --region=/exampleRegion --key="('id':'2')" --value="('exampleIdentifier': {'exampleId': '000000001','systemIds':[{'id': 'ID','system': 'MUREX'}, {'id': 'ID1','system': 'WHITEBOX'}]})" --value-class="examples.ExampleRegion"
+gfsh>search lucene --name=arrayIndex --region=/exampleRegion --queryString="exampleIdentifier.systemIds.system:MUREX" --defaultField="exampleIdentifier.systemIds.system"
+   key     |              value              | score
+---------- | ------------------------------- | ----------
+{'id':'1'} | examples.ExampleRegion@105ea825 | 0.2876821
+{'id':'2'} | examples.ExampleRegion@4a0c4c91 | 0.25811607
